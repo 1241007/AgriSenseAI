@@ -10,6 +10,9 @@ from alembic import context
 from app.config import settings
 from app.db.engine import Base
 from app.db.models.user import User  # Make sure models are imported
+from app.db.models.farm import Farm
+from app.db.models.soil_report import SoilReport
+from app.db.models.crop_history import CropHistory
 
 config = context.config
 

@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "https://agriai.com"]
 
+    # ML Models
+    DEVICE: int = 0 # -1 for CPU, 0+ for GPU
+    SOIL_MODEL_ID: str = "GodfreyOwino/NPK_needs_mode2"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()
