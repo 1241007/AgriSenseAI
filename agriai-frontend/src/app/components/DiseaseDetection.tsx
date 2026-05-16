@@ -44,15 +44,10 @@ export default function DiseaseDetection() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showCamera, setShowCamera] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -98,48 +93,6 @@ export default function DiseaseDetection() {
         video: { facingMode: 'environment' } 
       });
       setStream(s);
-      setShowCamera(true);
-      // Wait for ref to be available
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = s;
-        }
-      }, 100);
-    } catch (err) {
-      console.error("Error accessing camera:", err);
-      alert("Could not access camera. Please check permissions.");
-    }
-  };
-
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-    setShowCamera(false);
-  };
-
-  const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const context = canvasRef.current.getContext('2d');
-      if (context) {
-        canvasRef.current.width = videoRef.current.videoWidth;
-        canvasRef.current.height = videoRef.current.videoHeight;
-        context.drawImage(videoRef.current, 0, 0);
-        const dataUrl = canvasRef.current.toDataURL('image/jpeg');
-        setSelectedImage(dataUrl);
-        stopCamera();
-      }
-    }
-  };
-
-  const startScan = () => {
-    setIsScanning(true);
-    setScanComplete(false);
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
-      });
-      setCameraStream(stream);
       setIsCameraOpen(true);
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -147,16 +100,10 @@ export default function DiseaseDetection() {
     }
   };
 
-  useEffect(() => {
-    if (isCameraOpen && cameraStream && videoRef.current) {
-      videoRef.current.srcObject = cameraStream;
-    }
-  }, [isCameraOpen, cameraStream]);
-
   const stopCamera = () => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
-      setCameraStream(null);
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
     }
     setIsCameraOpen(false);
   };
@@ -594,16 +541,18 @@ export default function DiseaseDetection() {
       </div>
 
       {/* Live Camera Overlay */}
-      {showCamera && (
+      {isCameraOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
           <div className="relative w-full max-w-2xl bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
             <video
-              ref={videoRef}
+              ref={(el) => {
+                if (el && stream) el.srcObject = stream;
+                videoRef.current = el;
+              }}
               autoPlay
               playsInline
               className="w-full h-auto"
             />
-            <canvas ref={canvasRef} className="hidden" />
             
             <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-6">
               <button
@@ -669,47 +618,6 @@ export default function DiseaseDetection() {
         }
       `}</style>
 
-      {/* Camera Modal */}
-      {isCameraOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="relative w-full max-w-2xl bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              className="w-full h-auto aspect-video object-cover"
-            />
-            
-            {/* Camera Overlay UI */}
-            <div className="absolute inset-0 pointer-events-none border-2 border-emerald-500/30 m-8 rounded-2xl">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 mt-4 px-4 py-2 bg-black/50 backdrop-blur-md rounded-full text-white text-sm font-medium flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                Live Camera
-              </div>
-            </div>
-
-            <div className="absolute bottom-0 left-0 right-0 p-8 flex items-center justify-between gap-4 bg-gradient-to-t from-black/80 to-transparent">
-              <button 
-                onClick={stopCamera}
-                className="p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all"
-              >
-                <X className="w-6 h-6" />
-              </button>
-              
-              <button 
-                onClick={capturePhoto}
-                className="w-20 h-20 bg-white rounded-full p-1 shadow-2xl hover:scale-105 active:scale-95 transition-all"
-              >
-                <div className="w-full h-full border-4 border-gray-900 rounded-full bg-white flex items-center justify-center">
-                  <div className="w-4 h-4 bg-emerald-500 rounded-full"></div>
-                </div>
-              </button>
-              
-              <div className="w-14"></div> {/* Spacer for symmetry */}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Hidden Canvas for capture */}
       <canvas ref={canvasRef} className="hidden" />
