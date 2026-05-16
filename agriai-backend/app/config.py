@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OPENAI_MODEL: str = "gpt-3.5-turbo"
     OPENAI_API_KEY: str | None = None
+    OPENWEATHERMAP_API_KEY: str | None = None
 
 
 settings = Settings()

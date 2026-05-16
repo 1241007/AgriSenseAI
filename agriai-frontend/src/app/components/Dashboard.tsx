@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Bell,
   Search,
@@ -19,12 +19,12 @@ import {
   TestTube,
   Lightbulb,
   TrendingUp,
-  Bug
+  Bug,
+  Loader2
 } from 'lucide-react';
+import { Link } from 'react-router';
 import Sidebar from './Sidebar';
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   BarChart,
@@ -39,6 +39,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
+import { api, FarmResponse, WeatherResponse } from '../api/client';
 
 const yieldData = [
   { month: 'Jan', yield: 65 },
@@ -68,10 +69,52 @@ const healthData = [
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [farms, setFarms] = useState<FarmResponse[]>([]);
+  const [weather, setWeather] = useState<WeatherResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    try {
+      const farmsData = await api.getFarms();
+      setFarms(farmsData);
+      
+      if (farmsData.length > 0) {
+        fetchWeather(farmsData[0].farm_id);
+      }
+    } catch (err) {
+      console.error('Failed to load dashboard data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchWeather = async (farmId: string) => {
+    setWeatherLoading(true);
+    try {
+      const weatherData = await api.getWeather({ farm_id: farmId });
+      setWeather(weatherData);
+    } catch (err) {
+      console.error('Failed to load weather', err);
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-emerald-50">
+        <Loader2 className="w-12 h-12 text-emerald-600 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-      {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -79,7 +122,6 @@ export default function Dashboard() {
         colorScheme="emerald"
       />
 
-      {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -87,9 +129,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Main Content */}
       <div className="lg:ml-64">
-        {/* Topbar */}
         <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100">
           <div className="px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between gap-4">
@@ -111,10 +151,6 @@ export default function Dashboard() {
               </div>
 
               <div className="flex items-center gap-4">
-                <button className="relative p-2 hover:bg-emerald-50 rounded-lg transition-colors">
-                  <Bell className="w-6 h-6 text-gray-700" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </button>
                 <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-lg bg-white/60 rounded-lg border border-emerald-100">
                   <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
                     <User className="w-5 h-5" />
@@ -123,35 +159,31 @@ export default function Dashboard() {
                     <div className="text-sm font-medium text-gray-800">John Farmer</div>
                     <div className="text-xs text-gray-600">Premium Plan</div>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-gray-600 hidden sm:block" />
                 </div>
               </div>
             </div>
           </div>
         </header>
 
-        {/* Dashboard Content */}
         <main className="p-4 sm:p-6 lg:p-8 space-y-6">
-          {/* Welcome Section */}
-          <div className="backdrop-blur-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-6 sm:p-8 text-white">
+          <div className="backdrop-blur-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-6 sm:p-8 text-white shadow-lg">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <h1 className="text-3xl font-bold mb-2">Welcome back, John! 👋</h1>
-                <p className="text-emerald-100">Here's what's happening with your farms today.</p>
+                <p className="text-emerald-100">Here's what's happening with your {farms.length} farms today.</p>
               </div>
-              <button className="px-6 py-3 bg-white text-emerald-600 rounded-xl hover:shadow-xl transition-all flex items-center gap-2">
+              <Link to="/soil-analysis" className="px-6 py-3 bg-white text-emerald-600 rounded-xl hover:shadow-xl transition-all flex items-center gap-2 font-medium">
                 <Zap className="w-5 h-5" />
                 Quick Scan
-              </button>
+              </Link>
             </div>
           </div>
 
-          {/* Analytics Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 title: 'Total Farms',
-                value: '12',
+                value: farms.length.toString(),
                 change: '+2 this month',
                 icon: Wheat,
                 gradient: 'from-emerald-500 to-green-500',
@@ -184,15 +216,15 @@ export default function Dashboard() {
             ].map((card, index) => (
               <div
                 key={index}
-                className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 hover:shadow-xl transition-all"
+                className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 hover:shadow-xl transition-all group shadow-sm"
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${card.gradient}`}>
+                  <div className={`p-3 rounded-xl bg-gradient-to-br ${card.gradient} group-hover:scale-110 transition-transform`}>
                     <card.icon className="w-6 h-6 text-white" />
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-600">{card.title}</p>
+                  <p className="text-sm text-gray-600 font-medium">{card.title}</p>
                   <h3 className="text-3xl font-bold text-gray-800">{card.value}</h3>
                   <p className="text-xs text-gray-500">{card.change}</p>
                 </div>
@@ -200,10 +232,8 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Charts Section */}
           <div className="grid lg:grid-cols-2 gap-6">
-            {/* Yield Trend */}
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
+            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
               <h3 className="text-xl font-bold text-gray-800 mb-6">Yield Trend (Tons/Acre)</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={yieldData}>
@@ -213,14 +243,14 @@ export default function Dashboard() {
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                   <XAxis dataKey="month" stroke="#6b7280" />
                   <YAxis stroke="#6b7280" />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: 'rgba(255, 255, 255, 0.9)',
                       border: '1px solid #d1fae5',
-                      borderRadius: '8px'
+                      borderRadius: '12px'
                     }}
                   />
                   <Area
@@ -234,8 +264,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
 
-            {/* Crop Distribution */}
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
+            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
               <h3 className="text-xl font-bold text-gray-800 mb-6">Crop Distribution</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
@@ -256,7 +285,7 @@ export default function Dashboard() {
                     contentStyle={{
                       backgroundColor: 'rgba(255, 255, 255, 0.9)',
                       border: '1px solid #d1fae5',
-                      borderRadius: '8px'
+                      borderRadius: '12px'
                     }}
                   />
                   <Legend />
@@ -265,47 +294,62 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Weather & AI Insights */}
           <div className="grid lg:grid-cols-3 gap-6">
-            {/* Weather Widget */}
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
+            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-gray-800">Weather</h3>
-                <MapPin className="w-5 h-5 text-gray-500" />
+                <Link to="/weather" className="text-emerald-600 hover:text-emerald-700 text-sm font-medium flex items-center gap-1">
+                  Details
+                  <TrendingUp className="w-4 h-4" />
+                </Link>
               </div>
 
-              <div className="space-y-4">
-                <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 mb-4">
-                    <CloudRain className="w-10 h-10 text-white" />
-                  </div>
-                  <div className="text-5xl font-bold text-gray-800 mb-1">24°C</div>
-                  <div className="text-gray-600">Partly Cloudy</div>
-                  <div className="text-sm text-gray-500 mt-2">Iowa, United States</div>
+              {weatherLoading ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 py-10">
+                  <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                  <p className="text-sm text-gray-500">Loading forecast...</p>
                 </div>
+              ) : weather ? (
+                <div className="space-y-6 flex-1">
+                  <div className="text-center">
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 mb-4 shadow-lg shadow-blue-200/50">
+                      <CloudRain className="w-10 h-10 text-white" />
+                    </div>
+                    <div className="text-5xl font-bold text-gray-800 mb-1">{Math.round(weather.current_temp || 0)}°C</div>
+                    <div className="text-gray-600 font-medium capitalize">{weather.summary}</div>
+                    <div className="flex items-center justify-center gap-1 text-sm text-gray-500 mt-2">
+                      <MapPin className="w-3 h-3" />
+                      {farms[0]?.name || 'Unknown'}
+                    </div>
+                  </div>
 
-                <div className="grid grid-cols-3 gap-4 pt-4 border-t border-emerald-200">
-                  <div className="text-center">
-                    <Droplets className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-                    <div className="text-sm font-medium text-gray-800">65%</div>
-                    <div className="text-xs text-gray-500">Humidity</div>
-                  </div>
-                  <div className="text-center">
-                    <Wind className="w-5 h-5 text-teal-500 mx-auto mb-1" />
-                    <div className="text-sm font-medium text-gray-800">12 km/h</div>
-                    <div className="text-xs text-gray-500">Wind</div>
-                  </div>
-                  <div className="text-center">
-                    <Thermometer className="w-5 h-5 text-orange-500 mx-auto mb-1" />
-                    <div className="text-sm font-medium text-gray-800">18°C</div>
-                    <div className="text-xs text-gray-500">Feels Like</div>
+                  <div className="grid grid-cols-3 gap-4 pt-6 border-t border-emerald-100">
+                    <div className="text-center">
+                      <Droplets className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+                      <div className="text-sm font-bold text-gray-800">{weather.forecast[0].precipitation}mm</div>
+                      <div className="text-xs text-gray-500">Rain</div>
+                    </div>
+                    <div className="text-center">
+                      <Wind className="w-5 h-5 text-teal-500 mx-auto mb-1" />
+                      <div className="text-sm font-bold text-gray-800">12km/h</div>
+                      <div className="text-xs text-gray-500">Wind</div>
+                    </div>
+                    <div className="text-center">
+                      <Thermometer className="w-5 h-5 text-orange-500 mx-auto mb-1" />
+                      <div className="text-sm font-bold text-gray-800">{Math.round(weather.forecast[0].temp_max)}°</div>
+                      <div className="text-xs text-gray-500">Max</div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 py-10 text-gray-400">
+                  <CloudRain className="w-10 h-10" />
+                  <p className="text-sm text-center">No weather data.<br/>Please add a farm.</p>
+                </div>
+              )}
             </div>
 
-            {/* AI Insights */}
-            <div className="lg:col-span-2 backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
+            <div className="lg:col-span-2 backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
               <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <Zap className="w-5 h-5 text-emerald-600" />
                 AI Insights & Recommendations
@@ -316,25 +360,25 @@ export default function Dashboard() {
                   {
                     type: 'success',
                     title: 'Optimal Planting Window',
-                    message: 'Next 3-5 days are ideal for planting corn in Field A based on soil moisture and weather forecast.',
+                    message: 'Next 3-5 days are ideal for planting based on soil moisture and weather forecast.',
                     time: '2 hours ago'
                   },
                   {
                     type: 'warning',
                     title: 'Disease Risk Alert',
-                    message: 'Increased risk of leaf rust detected in wheat fields. Consider preventive fungicide application.',
+                    message: 'Increased risk of leaf rust detected. Consider preventive fungicide application.',
                     time: '5 hours ago'
                   },
                   {
                     type: 'info',
                     title: 'Irrigation Recommendation',
-                    message: 'Reduce irrigation by 15% in Field C. Current soil moisture levels are optimal for crop growth.',
+                    message: 'Reduce irrigation by 15%. Current soil moisture levels are optimal for crop growth.',
                     time: '1 day ago'
                   }
                 ].map((insight, index) => (
                   <div
                     key={index}
-                    className="flex gap-4 p-4 rounded-xl bg-white/50 border border-emerald-100 hover:bg-white/70 transition-all"
+                    className="flex gap-4 p-4 rounded-xl bg-white/50 border border-emerald-100 hover:bg-white/70 transition-all shadow-sm"
                   >
                     <div
                       className={`p-2 rounded-lg h-fit ${
@@ -354,8 +398,8 @@ export default function Dashboard() {
                       )}
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-800 mb-1">{insight.title}</h4>
-                      <p className="text-sm text-gray-600 mb-2">{insight.message}</p>
+                      <h4 className="font-bold text-gray-800 mb-1">{insight.title}</h4>
+                      <p className="text-sm text-gray-600 mb-2 leading-relaxed">{insight.message}</p>
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <Calendar className="w-3 h-3" />
                         {insight.time}
@@ -367,10 +411,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Recent Predictions & Farm Overview */}
           <div className="grid lg:grid-cols-2 gap-6">
-            {/* Recent Predictions */}
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
+            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
               <h3 className="text-xl font-bold text-gray-800 mb-6">Recent Predictions</h3>
               <div className="space-y-4">
                 {[
@@ -394,50 +436,42 @@ export default function Dashboard() {
                     prediction: '67 tons',
                     confidence: '88%',
                     status: 'Good'
-                  },
-                  {
-                    farm: 'Mountain View',
-                    crop: 'Rice',
-                    prediction: '95 tons',
-                    confidence: '92%',
-                    status: 'Good'
                   }
                 ].map((pred, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-4 rounded-xl bg-white/50 border border-emerald-100 hover:bg-white/70 transition-all"
+                    className="flex items-center justify-between p-4 rounded-xl bg-white/50 border border-emerald-100 hover:bg-white hover:shadow-md transition-all shadow-sm"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-sm">
                         <Wheat className="w-5 h-5" />
                       </div>
                       <div>
-                        <h4 className="font-medium text-gray-800">{pred.farm}</h4>
+                        <h4 className="font-bold text-gray-800">{pred.farm}</h4>
                         <p className="text-sm text-gray-600">{pred.crop}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="font-bold text-gray-800">{pred.prediction}</div>
-                      <div className="text-xs text-emerald-600">{pred.confidence} confidence</div>
+                      <div className="text-xs text-emerald-600 font-medium">{pred.confidence} confidence</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Crop Health Trend */}
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
+            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
               <h3 className="text-xl font-bold text-gray-800 mb-6">Weekly Crop Health</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={healthData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                   <XAxis dataKey="day" stroke="#6b7280" />
                   <YAxis stroke="#6b7280" />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: 'rgba(255, 255, 255, 0.9)',
                       border: '1px solid #d1fae5',
-                      borderRadius: '8px'
+                      borderRadius: '12px'
                     }}
                   />
                   <Bar dataKey="health" fill="#10b981" radius={[8, 8, 0, 0]} />
@@ -446,27 +480,27 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
+          <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
             <h3 className="text-xl font-bold text-gray-800 mb-6">Quick Actions</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               {[
-                { icon: TestTube, label: 'Soil Test', gradient: 'from-amber-500 to-orange-500' },
-                { icon: Bug, label: 'Scan Disease', gradient: 'from-red-500 to-pink-500' },
-                { icon: Lightbulb, label: 'Get Advice', gradient: 'from-emerald-500 to-green-500' },
-                { icon: TrendingUp, label: 'Predict Yield', gradient: 'from-blue-500 to-indigo-500' },
-                { icon: CloudRain, label: 'Weather', gradient: 'from-cyan-500 to-teal-500' },
-                { icon: Wheat, label: 'Add Farm', gradient: 'from-violet-500 to-purple-500' }
+                { icon: TestTube, label: 'Soil Test', gradient: 'from-amber-500 to-orange-500', path: '/soil-analysis' },
+                { icon: Bug, label: 'Scan Disease', gradient: 'from-red-500 to-pink-500', path: '/disease-detection' },
+                { icon: Lightbulb, label: 'Get Advice', gradient: 'from-emerald-500 to-green-500', path: '/crop-recommendation' },
+                { icon: TrendingUp, label: 'Predict Yield', gradient: 'from-blue-500 to-indigo-500', path: '/yield-prediction' },
+                { icon: CloudRain, label: 'Weather', gradient: 'from-cyan-500 to-teal-500', path: '/weather' },
+                { icon: Wheat, label: 'Add Farm', gradient: 'from-violet-500 to-purple-500', path: '/farms' }
               ].map((action, index) => (
-                <button
+                <Link
                   key={index}
-                  className="flex flex-col items-center gap-3 p-6 rounded-xl bg-white/50 border border-emerald-100 hover:bg-white hover:shadow-lg transition-all"
+                  to={action.path}
+                  className="flex flex-col items-center gap-3 p-6 rounded-xl bg-white/50 border border-emerald-100 hover:bg-white hover:shadow-lg hover:scale-105 transition-all group"
                 >
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${action.gradient}`}>
+                  <div className={`p-3 rounded-xl bg-gradient-to-br ${action.gradient} group-hover:rotate-12 transition-transform shadow-md`}>
                     <action.icon className="w-6 h-6 text-white" />
                   </div>
-                  <span className="text-sm font-medium text-gray-700">{action.label}</span>
-                </button>
+                  <span className="text-sm font-bold text-gray-700">{action.label}</span>
+                </Link>
               ))}
             </div>
           </div>

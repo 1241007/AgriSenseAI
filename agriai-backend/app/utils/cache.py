@@ -19,7 +19,7 @@ async def cache_set(key: str, value: dict, ttl: int = 3600) -> None:
     redis = get_redis_client()
     if not redis:
         return
-    await redis.set(key, json.dumps(value), ex=ttl)
+    await redis.set(key, json.dumps(value, default=str), ex=ttl)
 
 
 def make_cache_key(prefix: str, **kwargs: Any) -> str:

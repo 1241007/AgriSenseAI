@@ -53,7 +53,7 @@ def load_models() -> None:
         logger.info("Loading plant disease detection model...")
         MODEL_REGISTRY["plant_disease"] = pipeline(
             "image-classification", 
-            model="prof-freakenstein/plantnet-disease-detection"
+            model="nateraw/vit-base-beans"
         )
         logger.info("plant_disease model loaded successfully.")
     except Exception as exc:
