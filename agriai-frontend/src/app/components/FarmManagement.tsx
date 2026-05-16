@@ -1,193 +1,349 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
-  Bell,
-  Search,
-  User,
-  ChevronDown,
-  Plus,
-  MapPin,
-  Calendar,
-  Droplets,
-  ThermometerSun,
-  Activity,
-  ArrowUp,
-  Menu,
-  MoreVertical,
-  CheckCircle,
-  Sprout,
-  Wheat,
-  TestTube
+  Bell, Search, User, ChevronDown, Plus, MapPin, Calendar,
+  Droplets, ThermometerSun, Activity, ArrowUp, Menu, MoreVertical,
+  CheckCircle, Sprout, Wheat, TestTube, Trash2, X, Loader2
 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend
+  AreaChart, Area, BarChart, Bar, RadarChart, PolarGrid,
+  PolarAngleAxis, PolarRadiusAxis, Radar, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { Link } from 'react-router';
-import { X } from 'lucide-react';
+import {
+  api,
+  type FarmResponse,
+  type FarmCreate,
+  type SoilReportResponse,
+  type SoilReportCreate,
+} from '../api/client';
 
 const seasonalData = [
   { season: 'Spring', yield: 75, quality: 85, efficiency: 78 },
   { season: 'Summer', yield: 92, quality: 88, efficiency: 85 },
   { season: 'Fall', yield: 88, quality: 90, efficiency: 87 },
-  { season: 'Winter', yield: 65, quality: 82, efficiency: 72 }
+  { season: 'Winter', yield: 65, quality: 82, efficiency: 72 },
 ];
 
 const productionData = [
-  { month: 'Jan', production: 45 },
-  { month: 'Feb', production: 52 },
-  { month: 'Mar', production: 68 },
-  { month: 'Apr', production: 78 },
-  { month: 'May', production: 85 },
-  { month: 'Jun', production: 92 }
+  { month: 'Jan', production: 45 }, { month: 'Feb', production: 52 },
+  { month: 'Mar', production: 68 }, { month: 'Apr', production: 78 },
+  { month: 'May', production: 85 }, { month: 'Jun', production: 92 },
 ];
 
-const soilHealthData = [
-  { metric: 'Nitrogen', value: 85 },
-  { metric: 'Phosphorus', value: 78 },
-  { metric: 'Potassium', value: 82 },
-  { metric: 'pH Level', value: 90 },
-  { metric: 'Moisture', value: 75 },
-  { metric: 'Organic Matter', value: 88 }
-];
+// ── Add Farm Modal ────────────────────────────────────────────────────────────
 
-const farms = [
-  {
-    id: 1,
-    name: 'Green Valley Farm',
-    location: '41.8781° N, 87.6298° W',
-    area: 125.5,
-    currentCrop: 'Wheat',
-    soilHealth: 'Excellent',
-    soilScore: 94,
-    lastUpdated: '2 hours ago',
-    cropHistory: ['Wheat', 'Corn', 'Soybean'],
-    moisture: 68,
-    temperature: 24,
-    status: 'active',
-    yieldPrediction: 145
-  },
-  {
-    id: 2,
-    name: 'Sunny Acres',
-    location: '40.7128° N, 74.0060° W',
-    area: 87.3,
-    currentCrop: 'Corn',
-    soilHealth: 'Good',
-    soilScore: 88,
-    lastUpdated: '5 hours ago',
-    cropHistory: ['Corn', 'Wheat', 'Rice'],
-    moisture: 72,
-    temperature: 26,
-    status: 'active',
-    yieldPrediction: 98
-  },
-  {
-    id: 3,
-    name: 'River Bend Farm',
-    location: '39.9612° N, 82.9988° W',
-    area: 156.8,
-    currentCrop: 'Soybean',
-    soilHealth: 'Good',
-    soilScore: 86,
-    lastUpdated: '1 day ago',
-    cropHistory: ['Soybean', 'Wheat', 'Corn'],
-    moisture: 65,
-    temperature: 23,
-    status: 'active',
-    yieldPrediction: 112
-  },
-  {
-    id: 4,
-    name: 'Mountain View',
-    location: '37.7749° N, 122.4194° W',
-    area: 203.2,
-    currentCrop: 'Rice',
-    soilHealth: 'Excellent',
-    soilScore: 92,
-    lastUpdated: '3 hours ago',
-    cropHistory: ['Rice', 'Wheat', 'Barley'],
-    moisture: 78,
-    temperature: 25,
-    status: 'monitoring',
-    yieldPrediction: 187
-  }
-];
+function AddFarmModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (farm: FarmResponse) => void;
+}) {
+  const [form, setForm] = useState<FarmCreate>({
+    name: '', area_hectares: 0, region: '', current_crop: '',
+    latitude: undefined, longitude: undefined,
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const payload: FarmCreate = {
+        name: form.name,
+        area_hectares: Number(form.area_hectares),
+        ...(form.region ? { region: form.region } : {}),
+        ...(form.current_crop ? { current_crop: form.current_crop } : {}),
+        ...(form.latitude != null ? { latitude: Number(form.latitude) } : {}),
+        ...(form.longitude != null ? { longitude: Number(form.longitude) } : {}),
+      };
+      const farm = await api.createFarm(payload);
+      onCreated(farm);
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to create farm');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="backdrop-blur-lg bg-white/90 rounded-3xl p-8 max-w-2xl w-full border border-emerald-200">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Add New Farm</h2>
+          <button onClick={onClose} className="p-2 hover:bg-emerald-50 rounded-lg transition-colors">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        {error && <p className="mb-4 text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2">{error}</p>}
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-700 mb-2">Farm Name *</label>
+              <input required type="text" placeholder="Enter farm name"
+                value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-2">Area (hectares) *</label>
+              <input required type="number" step="0.01" min="0.01" max="10000" placeholder="0.0"
+                value={form.area_hectares || ''} onChange={e => setForm(f => ({ ...f, area_hectares: parseFloat(e.target.value) }))}
+                className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-gray-700 mb-2">Region</label>
+            <input type="text" placeholder="e.g. Northern Province"
+              value={form.region ?? ''} onChange={e => setForm(f => ({ ...f, region: e.target.value }))}
+              className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-700 mb-2">Latitude</label>
+              <input type="number" step="any" placeholder="-90 to 90"
+                value={form.latitude ?? ''} onChange={e => setForm(f => ({ ...f, latitude: e.target.value ? parseFloat(e.target.value) : undefined }))}
+                className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-2">Longitude</label>
+              <input type="number" step="any" placeholder="-180 to 180"
+                value={form.longitude ?? ''} onChange={e => setForm(f => ({ ...f, longitude: e.target.value ? parseFloat(e.target.value) : undefined }))}
+                className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-gray-700 mb-2">Current Crop</label>
+            <select value={form.current_crop ?? ''} onChange={e => setForm(f => ({ ...f, current_crop: e.target.value }))}
+              className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="">Select crop type</option>
+              {['Wheat', 'Corn', 'Rice', 'Soybean', 'Barley'].map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-4 pt-4">
+            <button type="button" onClick={onClose}
+              className="flex-1 px-6 py-3 bg-white border-2 border-emerald-200 text-gray-700 rounded-xl hover:bg-emerald-50 transition-all">
+              Cancel
+            </button>
+            <button type="submit" disabled={loading}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-xl transition-all flex items-center justify-center gap-2">
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              Add Farm
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Soil Report Form ──────────────────────────────────────────────────────────
+
+function SoilReportForm({
+  farmId,
+  onCreated,
+}: {
+  farmId: string;
+  onCreated: (r: SoilReportResponse) => void;
+}) {
+  const [form, setForm] = useState<SoilReportCreate>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const report = await api.createSoilReport(farmId, form);
+      onCreated(report);
+      setForm({});
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to submit report');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const field = (label: string, key: keyof SoilReportCreate, placeholder: string) => (
+    <div>
+      <label className="block text-xs text-gray-600 mb-1">{label}</label>
+      <input type="number" step="any" placeholder={placeholder}
+        value={(form[key] as number | undefined) ?? ''}
+        onChange={e => setForm(f => ({ ...f, [key]: e.target.value ? parseFloat(e.target.value) : undefined }))}
+        className="w-full px-3 py-2 bg-white/70 border border-emerald-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+    </div>
+  );
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {field('pH Level (0-14)', 'ph_level', '6.5')}
+        {field('Moisture %', 'moisture_percent', '65')}
+        {field('Nitrogen (ppm)', 'nitrogen_ppm', '40')}
+        {field('Phosphorus (ppm)', 'phosphorus_ppm', '20')}
+        {field('Potassium (ppm)', 'potassium_ppm', '150')}
+        {field('Organic Matter %', 'organic_matter_percent', '3.5')}
+      </div>
+      <div>
+        <label className="block text-xs text-gray-600 mb-1">Notes</label>
+        <textarea rows={2} placeholder="Optional notes..."
+          value={form.notes ?? ''}
+          onChange={e => setForm(f => ({ ...f, notes: e.target.value || undefined }))}
+          className="w-full px-3 py-2 bg-white/70 border border-emerald-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+      </div>
+      <button type="submit" disabled={loading}
+        className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-sm hover:shadow-lg transition-all flex items-center gap-2">
+        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+        Submit Soil Report
+      </button>
+    </form>
+  );
+}
+
+// ── Delete Confirm Dialog ─────────────────────────────────────────────────────
+
+function DeleteConfirm({
+  name,
+  onConfirm,
+  onCancel,
+  loading,
+}: {
+  name: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+        <h3 className="text-lg font-bold text-gray-800 mb-2">Delete Farm</h3>
+        <p className="text-gray-600 mb-6">
+          Are you sure you want to delete <span className="font-semibold">{name}</span>? This action cannot be undone.
+        </p>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-all">
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={loading}
+            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all flex items-center justify-center gap-2">
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function FarmManagement() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('Farms');
-  const [selectedFarm, setSelectedFarm] = useState<number | null>(null);
+  const [farms, setFarms] = useState<FarmResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null);
   const [showAddFarm, setShowAddFarm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<FarmResponse | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Soil reports for selected farm
+  const [soilReports, setSoilReports] = useState<SoilReportResponse[]>([]);
+  const [soilLoading, setSoilLoading] = useState(false);
 
-  const activeFarm = selectedFarm ? farms.find(f => f.id === selectedFarm) : null;
+  const fetchFarms = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.getFarms();
+      setFarms(data);
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to load farms');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchFarms(); }, [fetchFarms]);
+
+  const fetchSoilReports = useCallback(async (farmId: string) => {
+    setSoilLoading(true);
+    try {
+      const data = await api.getSoilReports(farmId);
+      setSoilReports(data);
+    } catch {
+      setSoilReports([]);
+    } finally {
+      setSoilLoading(false);
+    }
+  }, []);
+
+  const handleSelectFarm = (farmId: string) => {
+    if (farmId === selectedFarmId) {
+      setSelectedFarmId(null);
+      setSoilReports([]);
+    } else {
+      setSelectedFarmId(farmId);
+      fetchSoilReports(farmId);
+    }
+  };
+
+  const handleFarmCreated = (farm: FarmResponse) => {
+    setFarms(prev => [farm, ...prev]);
+    setShowAddFarm(false);
+  };
+
+  const handleDeleteFarm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await api.deleteFarm(deleteTarget.farm_id);
+      setFarms(prev => prev.filter(f => f.farm_id !== deleteTarget.farm_id));
+      if (selectedFarmId === deleteTarget.farm_id) setSelectedFarmId(null);
+      setDeleteTarget(null);
+    } catch (err: any) {
+      alert(err.message ?? 'Failed to delete farm');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const activeFarm = farms.find(f => f.farm_id === selectedFarmId) ?? null;
+
+  const totalArea = farms.reduce((s, f) => s + f.area_hectares, 0).toFixed(1);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeItem="Farms"
-        colorScheme="emerald"
-      />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} activeItem="Farms" colorScheme="emerald" />
+      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Main Content */}
       <div className="lg:ml-64">
         {/* Topbar */}
         <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100">
           <div className="px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden p-2 hover:bg-emerald-50 rounded-lg transition-colors"
-                >
+                <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 hover:bg-emerald-50 rounded-lg transition-colors">
                   <Menu className="w-6 h-6" />
                 </button>
                 <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search farms..."
-                    className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input type="text" placeholder="Search farms..."
+                    className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                 </div>
               </div>
-
               <div className="flex items-center gap-4">
                 <button className="relative p-2 hover:bg-emerald-50 rounded-lg transition-colors">
                   <Bell className="w-6 h-6 text-gray-700" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
                 </button>
                 <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-lg bg-white/60 rounded-lg border border-emerald-100">
                   <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
                     <User className="w-5 h-5" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <div className="text-sm font-medium text-gray-800">John Farmer</div>
-                    <div className="text-xs text-gray-600">Premium Plan</div>
                   </div>
                   <ChevronDown className="w-4 h-4 text-gray-600 hidden sm:block" />
                 </div>
@@ -196,96 +352,62 @@ export default function FarmManagement() {
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="p-4 sm:p-6 lg:p-8 space-y-6">
-          {/* Header Section */}
+          {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-800 mb-2">Farm Management</h1>
               <p className="text-gray-600">Manage and monitor all your farms in one place</p>
             </div>
-            <button
-              onClick={() => setShowAddFarm(true)}
-              className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-xl transition-all flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Add New Farm
+            <button onClick={() => setShowAddFarm(true)}
+              className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-xl transition-all flex items-center gap-2">
+              <Plus className="w-5 h-5" /> Add New Farm
             </button>
           </div>
 
-          {/* Farm Performance Overview */}
+          {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              {
-                title: 'Total Farms',
-                value: '4',
-                change: '+1',
-                trend: 'up',
-                icon: Wheat,
-                gradient: 'from-emerald-500 to-green-500'
-              },
-              {
-                title: 'Total Area',
-                value: '572.8',
-                unit: 'hectares',
-                change: '+12.5%',
-                trend: 'up',
-                icon: MapPin,
-                gradient: 'from-teal-500 to-cyan-500'
-              },
-              {
-                title: 'Avg Soil Health',
-                value: '90%',
-                change: '+3%',
-                trend: 'up',
-                icon: TestTube,
-                gradient: 'from-blue-500 to-indigo-500'
-              },
-              {
-                title: 'Active Crops',
-                value: '4',
-                change: 'All monitored',
-                trend: 'neutral',
-                icon: Sprout,
-                gradient: 'from-violet-500 to-purple-500'
-              }
-            ].map((card, index) => (
-              <div
-                key={index}
-                className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 hover:shadow-xl transition-all"
-              >
+              { title: 'Total Farms', value: String(farms.length), icon: Wheat, gradient: 'from-emerald-500 to-green-500' },
+              { title: 'Total Area', value: totalArea, unit: 'ha', icon: MapPin, gradient: 'from-teal-500 to-cyan-500' },
+              { title: 'Active Crops', value: String(farms.filter(f => f.current_crop).length), icon: Sprout, gradient: 'from-violet-500 to-purple-500' },
+              { title: 'Soil Reports', value: String(soilReports.length), icon: TestTube, gradient: 'from-blue-500 to-indigo-500' },
+            ].map((card, i) => (
+              <div key={i} className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 hover:shadow-xl transition-all">
                 <div className="flex items-start justify-between mb-4">
                   <div className={`p-3 rounded-xl bg-gradient-to-br ${card.gradient}`}>
                     <card.icon className="w-6 h-6 text-white" />
                   </div>
-                  {card.trend === 'up' && (
-                    <div className="flex items-center gap-1 text-green-600 text-sm">
-                      <ArrowUp className="w-4 h-4" />
-                      {card.change}
-                    </div>
-                  )}
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-600">{card.title}</p>
-                  <h3 className="text-3xl font-bold text-gray-800">
-                    {card.value}
-                    {card.unit && <span className="text-lg text-gray-500 ml-1">{card.unit}</span>}
-                  </h3>
-                </div>
+                <p className="text-sm text-gray-600">{card.title}</p>
+                <h3 className="text-3xl font-bold text-gray-800">
+                  {card.value}
+                  {card.unit && <span className="text-lg text-gray-500 ml-1">{card.unit}</span>}
+                </h3>
               </div>
             ))}
           </div>
 
-          {/* Farm Cards Grid */}
+          {/* Farm List */}
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Your Farms</h2>
+            {loading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+              </div>
+            )}
+            {error && <p className="text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
+            {!loading && !error && farms.length === 0 && (
+              <div className="text-center py-16 text-gray-500">
+                <Wheat className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>No farms yet. Add your first farm to get started.</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {farms.map((farm) => (
-                <div
-                  key={farm.id}
-                  className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 hover:shadow-xl transition-all cursor-pointer"
-                  onClick={() => setSelectedFarm(farm.id === selectedFarm ? null : farm.id)}
-                >
+              {farms.map(farm => (
+                <div key={farm.farm_id}
+                  className={`backdrop-blur-lg bg-white/60 rounded-2xl p-6 border transition-all cursor-pointer ${selectedFarmId === farm.farm_id ? 'border-emerald-400 shadow-xl' : 'border-emerald-100 hover:shadow-xl'}`}
+                  onClick={() => handleSelectFarm(farm.farm_id)}>
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-4">
                       <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white">
@@ -293,77 +415,47 @@ export default function FarmManagement() {
                       </div>
                       <div>
                         <h3 className="text-xl font-bold text-gray-800 mb-1">{farm.name}</h3>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <MapPin className="w-4 h-4" />
-                          {farm.location}
-                        </div>
+                        {farm.region && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <MapPin className="w-4 h-4" /> {farm.region}
+                          </div>
+                        )}
+                        {farm.latitude != null && farm.longitude != null && (
+                          <div className="text-xs text-gray-500 font-mono mt-1">
+                            {farm.latitude.toFixed(4)}°, {farm.longitude.toFixed(4)}°
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <button className="p-2 hover:bg-emerald-50 rounded-lg transition-colors">
-                      <MoreVertical className="w-5 h-5 text-gray-600" />
+                    <button
+                      className="p-2 hover:bg-red-50 rounded-lg transition-colors text-gray-400 hover:text-red-500"
+                      onClick={e => { e.stopPropagation(); setDeleteTarget(farm); }}
+                      title="Delete farm">
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="backdrop-blur-lg bg-white/50 rounded-xl p-4 border border-emerald-100">
                       <div className="text-xs text-gray-600 mb-1">Area</div>
-                      <div className="text-lg font-bold text-gray-800">{farm.area} ha</div>
+                      <div className="text-lg font-bold text-gray-800">{farm.area_hectares} ha</div>
                     </div>
                     <div className="backdrop-blur-lg bg-white/50 rounded-xl p-4 border border-emerald-100">
                       <div className="text-xs text-gray-600 mb-1">Current Crop</div>
-                      <div className="text-lg font-bold text-gray-800">{farm.currentCrop}</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-emerald-600" />
-                        <span className="text-sm text-gray-700">Soil Health</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-800">{farm.soilHealth}</span>
-                        <span className="text-xs text-emerald-600">({farm.soilScore}%)</span>
-                      </div>
-                    </div>
-                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all"
-                        style={{ width: `${farm.soilScore}%` }}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <div className="flex items-center gap-2">
-                        <Droplets className="w-4 h-4 text-blue-500" />
-                        <span className="text-xs text-gray-600">Moisture: {farm.moisture}%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <ThermometerSun className="w-4 h-4 text-orange-500" />
-                        <span className="text-xs text-gray-600">Temp: {farm.temperature}°C</span>
-                      </div>
+                      <div className="text-lg font-bold text-gray-800">{farm.current_crop ?? '—'}</div>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-4 border-t border-emerald-100">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-500" />
-                      <span className="text-xs text-gray-600">Updated {farm.lastUpdated}</span>
+                      <span className="text-xs text-gray-600">
+                        Updated {new Date(farm.updated_at).toLocaleDateString()}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${farm.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                      <span className="text-xs text-gray-700 capitalize">{farm.status}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center gap-2">
-                    <span className="text-xs text-gray-600">Crop History:</span>
-                    <div className="flex items-center gap-2">
-                      {farm.cropHistory.map((crop, idx) => (
-                        <span key={idx} className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-lg">
-                          {crop}
-                        </span>
-                      ))}
+                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                      <span className="text-xs text-gray-700">active</span>
                     </div>
                   </div>
                 </div>
@@ -371,60 +463,33 @@ export default function FarmManagement() {
             </div>
           </div>
 
-          {/* Farm Details Section (when farm is selected) */}
+          {/* Farm Detail */}
           {activeFarm && (
             <div className="space-y-6">
               <div className="backdrop-blur-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold mb-2">{activeFarm.name} - Detailed View</h2>
-                    <p className="text-emerald-100">Comprehensive analytics and insights</p>
+                    <h2 className="text-2xl font-bold mb-2">{activeFarm.name} — Detailed View</h2>
+                    <p className="text-emerald-100">Soil reports and analytics</p>
                   </div>
-                  <button
-                    onClick={() => setSelectedFarm(null)}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  >
+                  <button onClick={() => setSelectedFarmId(null)} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
                     <X className="w-6 h-6" />
                   </button>
                 </div>
               </div>
 
-              {/* Interactive Farm Map Placeholder */}
-              <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
-                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-emerald-600" />
-                  Farm Location & Map
-                </h3>
-                <div className="relative w-full h-80 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl overflow-hidden">
-                  {/* Map Placeholder */}
-                  <img
-                    src="https://images.unsplash.com/photo-1776687300225-a9f112122d17?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
-                    alt="Farm aerial view"
-                    className="w-full h-full object-cover opacity-60"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="backdrop-blur-lg bg-white/80 rounded-2xl p-6 text-center border border-emerald-200">
-                      <MapPin className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
-                      <h4 className="font-bold text-gray-800 mb-2">GPS Location</h4>
-                      <p className="text-gray-700 font-mono text-sm mb-3">{activeFarm.location}</p>
-                      <div className="grid grid-cols-2 gap-4 text-left">
-                        <div>
-                          <div className="text-xs text-gray-600">Total Area</div>
-                          <div className="text-lg font-bold text-gray-800">{activeFarm.area} ha</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-600">Yield Prediction</div>
-                          <div className="text-lg font-bold text-gray-800">{activeFarm.yieldPrediction} tons</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              {/* Location card */}
+              {activeFarm.latitude != null && activeFarm.longitude != null && (
+                <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-emerald-600" /> GPS Location
+                  </h3>
+                  <p className="font-mono text-gray-700">{activeFarm.latitude}°, {activeFarm.longitude}°</p>
                 </div>
-              </div>
+              )}
 
-              {/* Analytics Charts */}
+              {/* Charts */}
               <div className="grid lg:grid-cols-2 gap-6">
-                {/* Seasonal Performance */}
                 <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
                   <h3 className="text-xl font-bold text-gray-800 mb-6">Seasonal Performance</h3>
                   <ResponsiveContainer width="100%" height={300}>
@@ -434,26 +499,17 @@ export default function FarmManagement() {
                       <PolarRadiusAxis stroke="#6b7280" />
                       <Radar name="Yield" dataKey="yield" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
                       <Radar name="Quality" dataKey="quality" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
-                      <Radar name="Efficiency" dataKey="efficiency" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.3} />
                       <Legend />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                          border: '1px solid #d1fae5',
-                          borderRadius: '8px'
-                        }}
-                      />
+                      <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', border: '1px solid #d1fae5', borderRadius: '8px' }} />
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>
-
-                {/* Production Trend */}
                 <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
                   <h3 className="text-xl font-bold text-gray-800 mb-6">Production Trend (Tons)</h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={productionData}>
                       <defs>
-                        <linearGradient id="productionGradient" x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
                           <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
                         </linearGradient>
@@ -461,61 +517,54 @@ export default function FarmManagement() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                       <XAxis dataKey="month" stroke="#6b7280" />
                       <YAxis stroke="#6b7280" />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                          border: '1px solid #d1fae5',
-                          borderRadius: '8px'
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="production"
-                        stroke="#14b8a6"
-                        strokeWidth={3}
-                        fill="url(#productionGradient)"
-                      />
+                      <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', border: '1px solid #d1fae5', borderRadius: '8px' }} />
+                      <Area type="monotone" dataKey="production" stroke="#14b8a6" strokeWidth={3} fill="url(#pg)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              {/* Soil Health Analysis */}
-              <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
-                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                  <TestTube className="w-5 h-5 text-emerald-600" />
-                  Detailed Soil Status
+              {/* Soil Reports */}
+              <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 space-y-6">
+                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <TestTube className="w-5 h-5 text-emerald-600" /> Soil Reports
                 </h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={soilHealthData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="metric" stroke="#6b7280" />
-                    <YAxis stroke="#6b7280" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                        border: '1px solid #d1fae5',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Bar dataKey="value" fill="#10b981" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
-                  {[
-                    { label: 'Overall Health', value: activeFarm.soilScore + '%', icon: CheckCircle, color: 'green' },
-                    { label: 'Moisture Level', value: activeFarm.moisture + '%', icon: Droplets, color: 'blue' },
-                    { label: 'Temperature', value: activeFarm.temperature + '°C', icon: ThermometerSun, color: 'orange' }
-                  ].map((stat, idx) => (
-                    <div key={idx} className="backdrop-blur-lg bg-white/50 rounded-xl p-4 border border-emerald-100">
-                      <div className="flex items-center gap-2 mb-2">
-                        <stat.icon className={`w-4 h-4 text-${stat.color}-500`} />
-                        <span className="text-xs text-gray-600">{stat.label}</span>
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Submit New Report</h4>
+                  <SoilReportForm farmId={activeFarm.farm_id} onCreated={r => setSoilReports(prev => [r, ...prev])} />
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Report History</h4>
+                  {soilLoading && <div className="flex items-center gap-2 text-gray-500 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Loading...</div>}
+                  {!soilLoading && soilReports.length === 0 && <p className="text-sm text-gray-500">No soil reports yet.</p>}
+                  <div className="space-y-3">
+                    {soilReports.map(r => (
+                      <div key={r.report_id} className="bg-white/50 rounded-xl p-4 border border-emerald-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-gray-500">{new Date(r.reported_at).toLocaleString()}</span>
+                          <button
+                            onClick={async () => {
+                              await api.deleteSoilReport(activeFarm.farm_id, r.report_id);
+                              setSoilReports(prev => prev.filter(x => x.report_id !== r.report_id));
+                            }}
+                            className="text-gray-400 hover:text-red-500 transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                          {r.ph_level != null && <span className="text-gray-700">pH: <strong>{r.ph_level}</strong></span>}
+                          {r.moisture_percent != null && <span className="text-gray-700">Moisture: <strong>{r.moisture_percent}%</strong></span>}
+                          {r.nitrogen_ppm != null && <span className="text-gray-700">N: <strong>{r.nitrogen_ppm} ppm</strong></span>}
+                          {r.phosphorus_ppm != null && <span className="text-gray-700">P: <strong>{r.phosphorus_ppm} ppm</strong></span>}
+                          {r.potassium_ppm != null && <span className="text-gray-700">K: <strong>{r.potassium_ppm} ppm</strong></span>}
+                          {r.organic_matter_percent != null && <span className="text-gray-700">OM: <strong>{r.organic_matter_percent}%</strong></span>}
+                        </div>
+                        {r.notes && <p className="text-xs text-gray-500 mt-2 italic">{r.notes}</p>}
                       </div>
-                      <div className="text-2xl font-bold text-gray-800">{stat.value}</div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -523,79 +572,14 @@ export default function FarmManagement() {
         </main>
       </div>
 
-      {/* Add Farm Modal */}
-      {showAddFarm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="backdrop-blur-lg bg-white/90 rounded-3xl p-8 max-w-2xl w-full border border-emerald-200">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Add New Farm</h2>
-              <button
-                onClick={() => setShowAddFarm(false)}
-                className="p-2 hover:bg-emerald-50 rounded-lg transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-700 mb-2">Farm Name</label>
-                  <input
-                    type="text"
-                    placeholder="Enter farm name"
-                    className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 mb-2">Area (hectares)</label>
-                  <input
-                    type="number"
-                    placeholder="0.0"
-                    className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-gray-700 mb-2">GPS Location</label>
-                <input
-                  type="text"
-                  placeholder="Latitude, Longitude"
-                  className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-700 mb-2">Current Crop</label>
-                <select className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                  <option>Select crop type</option>
-                  <option>Wheat</option>
-                  <option>Corn</option>
-                  <option>Rice</option>
-                  <option>Soybean</option>
-                  <option>Barley</option>
-                </select>
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddFarm(false)}
-                  className="flex-1 px-6 py-3 bg-white border-2 border-emerald-200 text-gray-700 rounded-xl hover:bg-emerald-50 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-xl transition-all"
-                >
-                  Add Farm
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {showAddFarm && <AddFarmModal onClose={() => setShowAddFarm(false)} onCreated={handleFarmCreated} />}
+      {deleteTarget && (
+        <DeleteConfirm
+          name={deleteTarget.name}
+          onConfirm={handleDeleteFarm}
+          onCancel={() => setDeleteTarget(null)}
+          loading={deleteLoading}
+        />
       )}
     </div>
   );

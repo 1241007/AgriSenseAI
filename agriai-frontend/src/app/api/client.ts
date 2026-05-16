@@ -57,6 +57,85 @@ async function tryRefresh(): Promise<boolean> {
   }
 }
 
+// ── Farm types ──────────────────────────────────────────────────────────────
+
+export interface FarmResponse {
+  farm_id: string;
+  user_id: string;
+  name: string;
+  region: string | null;
+  area_hectares: number;
+  latitude: number | null;
+  longitude: number | null;
+  current_crop: string | null;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FarmCreate {
+  name: string;
+  region?: string;
+  area_hectares: number;
+  latitude?: number;
+  longitude?: number;
+  current_crop?: string;
+}
+
+export interface FarmUpdate {
+  name?: string;
+  region?: string;
+  area_hectares?: number;
+  latitude?: number;
+  longitude?: number;
+  current_crop?: string;
+}
+
+export interface SoilReportResponse {
+  report_id: string;
+  farm_id: string;
+  ph_level: number | null;
+  moisture_percent: number | null;
+  nitrogen_ppm: number | null;
+  phosphorus_ppm: number | null;
+  potassium_ppm: number | null;
+  organic_matter_percent: number | null;
+  notes: string | null;
+  reported_at: string;
+  created_at: string;
+}
+
+export interface SoilReportCreate {
+  ph_level?: number;
+  moisture_percent?: number;
+  nitrogen_ppm?: number;
+  phosphorus_ppm?: number;
+  potassium_ppm?: number;
+  organic_matter_percent?: number;
+  notes?: string;
+}
+
+export interface CropHistoryResponse {
+  history_id: string;
+  farm_id: string;
+  crop_name: string;
+  sown_date: string | null;
+  harvest_date: string | null;
+  yield_tons: number | null;
+  season: string | null;
+  created_at: string;
+}
+
+export interface CropHistoryCreate {
+  crop_name: string;
+  sown_date?: string;
+  harvest_date?: string;
+  yield_tons?: number;
+  season?: string;
+}
+
+// ── User types ───────────────────────────────────────────────────────────────
+
 export interface UserResponse {
   user_id: string;
   email: string;
@@ -110,4 +189,52 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+
+  // ── Farms ──────────────────────────────────────────────────────────────────
+
+  createFarm: (data: FarmCreate) =>
+    request<FarmResponse>("/farms", { method: "POST", body: JSON.stringify(data) }),
+
+  getFarms: (page = 1, pageSize = 20) =>
+    request<FarmResponse[]>(`/farms?page=${page}&page_size=${pageSize}`),
+
+  getFarm: (farmId: string) => request<FarmResponse>(`/farms/${farmId}`),
+
+  updateFarm: (farmId: string, data: FarmUpdate) =>
+    request<FarmResponse>(`/farms/${farmId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteFarm: (farmId: string) =>
+    request<void>(`/farms/${farmId}`, { method: "DELETE" }),
+
+  // ── Soil Reports ───────────────────────────────────────────────────────────
+
+  createSoilReport: (farmId: string, data: SoilReportCreate) =>
+    request<SoilReportResponse>(`/farms/${farmId}/soil-reports`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getSoilReports: (farmId: string, page = 1, pageSize = 20) =>
+    request<SoilReportResponse[]>(
+      `/farms/${farmId}/soil-reports?page=${page}&page_size=${pageSize}`
+    ),
+
+  deleteSoilReport: (farmId: string, reportId: string) =>
+    request<void>(`/farms/${farmId}/soil-reports/${reportId}`, { method: "DELETE" }),
+
+  // ── Crop History ───────────────────────────────────────────────────────────
+
+  addCropHistory: (farmId: string, data: CropHistoryCreate) =>
+    request<CropHistoryResponse>(`/farms/${farmId}/crop-history`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getCropHistory: (farmId: string, page = 1, pageSize = 20) =>
+    request<CropHistoryResponse[]>(
+      `/farms/${farmId}/crop-history?page=${page}&page_size=${pageSize}`
+    ),
 };

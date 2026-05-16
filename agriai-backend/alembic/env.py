@@ -9,6 +9,9 @@ from app.db.engine import Base
 
 # Import all models so Alembic can detect them
 import app.db.models.user  # noqa: F401
+import app.db.models.farm  # noqa: F401
+import app.db.models.soil_report  # noqa: F401
+import app.db.models.crop_history  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
