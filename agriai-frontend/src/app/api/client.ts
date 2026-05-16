@@ -233,6 +233,9 @@ export interface YieldPredictionRequest {
 export interface YieldPredictionResponse {
   predicted_yield_kg_per_hectare: number;
   total_yield_kg: number;
+export interface YieldPredictionResponse {
+  predicted_yield_kg_per_hectare: number;
+  total_predicted_yield_kg: number;
   yield_range: {
     low: number;
     high: number;
@@ -242,6 +245,7 @@ export interface YieldPredictionResponse {
     factor: string;
     impact: string;
   }>;
+  key_factors: string[];
   prediction_id: string;
   cached?: boolean;
 }
@@ -265,6 +269,11 @@ export interface WeatherResponse {
   summary: string;
   forecast: WeatherForecastItem[];
   agricultural_advisory?: string;
+export interface YieldPredictionRequest {
+  farm_id: string;
+  crop_name: string;
+  soil_report_id: string;
+  season: string;
 }
 
 // ── User types ───────────────────────────────────────────────────────────────

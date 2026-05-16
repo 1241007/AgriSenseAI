@@ -2,6 +2,8 @@ import logging
 import os
 import joblib
 from typing import Any
+from .yield_model import load_yield_model
+
 from transformers import pipeline
 
 logger = logging.getLogger(__name__)
@@ -54,6 +56,7 @@ def load_models() -> None:
         MODEL_REGISTRY["plant_disease"] = pipeline(
             "image-classification", 
             model="nateraw/vit-base-beans"
+            model="spandan-mazumder/plant-disease-recognition"
         )
         logger.info("plant_disease model loaded successfully.")
     except Exception as exc:
@@ -75,6 +78,16 @@ def load_models() -> None:
         
         MODEL_REGISTRY["plant_disease"] = MockDiseasePipeline()
         logger.info("plant_disease mock model loaded successfully.")
+    except Exception as exc:
+        logger.error("Critical failure loading plant_disease model: %s", exc)
+
+    try:
+        # Load yield prediction model
+        logger.info("Loading yield prediction model...")
+        MODEL_REGISTRY["yield_predict"] = load_yield_model()
+        logger.info("yield_predict model loaded successfully.")
+    except Exception as exc:
+        logger.error("Failed to load yield prediction model: %s", exc)
 
 
 def get_model(name: str) -> Any:

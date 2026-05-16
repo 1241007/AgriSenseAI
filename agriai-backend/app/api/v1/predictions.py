@@ -10,6 +10,19 @@ from app.schemas.weather import WeatherResponse
 from app.services.prediction_service import predict_soil, predict_fertilizer, predict_disease, predict_crop, predict_yield
 from app.services.weather_service import get_weather_forecast
 
+from typing import Annotated
+
+from app.dependencies import get_current_user, get_db
+from app.schemas.prediction import (
+    SoilRequest, SoilResponse, 
+    CropRequest, CropResponse, 
+    FertilizerRequest, FertilizerResponse, 
+    DiseaseResponse,
+    YieldRequest, YieldResponse
+)
+from app.services.prediction_service import (
+    predict_soil, predict_crop, predict_fertilizer, predict_disease, predict_yield
+)
 from app.db.models.user import User
 from app.utils.image_utils import validate_image, validate_size
 
@@ -21,10 +34,8 @@ async def predict_soil_route(
     request: SoilRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
-    async_req: bool = Query(False, alias="async", description="Run asynchronously via Celery (not yet implemented)"),
 ):
     return await predict_soil(request, current_user.user_id, session)
-
 
 
 @router.post("/crop", response_model=CropResponse)
@@ -34,6 +45,8 @@ async def predict_crop_route(
     session: Annotated[AsyncSession, Depends(get_db)],
 ):
     return await predict_crop(request, current_user.user_id, session)
+
+
 @router.post("/fertilizer", response_model=FertilizerResponse)
 async def predict_fertilizer_route(
     request: FertilizerRequest,

@@ -43,11 +43,10 @@ export default function DiseaseDetection() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -94,6 +93,11 @@ export default function DiseaseDetection() {
       setCameraStream(stream);
       setIsCameraOpen(true);
       setError(null);
+      const s = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      setStream(s);
+      setIsCameraOpen(true);
     } catch (err) {
       console.error("Error accessing camera:", err);
       setError("Could not access camera. Please check permissions.");
@@ -110,6 +114,10 @@ export default function DiseaseDetection() {
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop());
       setCameraStream(null);
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
     }
     setIsCameraOpen(false);
   };
@@ -477,10 +485,84 @@ export default function DiseaseDetection() {
                 </div>
               </button>
               <div className="w-14"></div>
+      {/* Live Camera Overlay */}
+      {isCameraOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+          <div className="relative w-full max-w-2xl bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
+            <video
+              ref={(el) => {
+                if (el && stream) el.srcObject = stream;
+                videoRef.current = el;
+              }}
+              autoPlay
+              playsInline
+              className="w-full h-auto"
+            />
+            
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-6">
+              <button
+                onClick={stopCamera}
+                className="p-4 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-all"
+              >
+                <XCircle className="w-8 h-8" />
+              </button>
+              <button
+                onClick={capturePhoto}
+                className="p-6 bg-white rounded-full text-emerald-600 shadow-xl hover:scale-110 transition-all"
+              >
+                <Camera className="w-8 h-8" />
+              </button>
+            </div>
+            
+            <div className="absolute top-4 left-4 text-white text-sm font-medium bg-black/40 px-3 py-1 rounded-full flex items-center gap-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              Live Camera
             </div>
           </div>
         </div>
       )}
+
+      <style>{`
+        .scanning-line {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(90deg, transparent, #10b981, transparent);
+          animation: scan 2s linear infinite;
+        }
+
+        @keyframes scan {
+          0% {
+            transform: translateY(0);
+          }
+          100% {
+            transform: translateY(500px);
+          }
+        }
+
+        @keyframes progress {
+          0% {
+            width: 0%;
+          }
+          100% {
+            width: 100%;
+          }
+        }
+
+        .animate-progress {
+          animation: progress 3s ease-in-out;
+        }
+
+        .bg-grid-pattern {
+          background-image:
+            linear-gradient(rgba(16, 185, 129, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(16, 185, 129, 0.1) 1px, transparent 1px);
+          background-size: 20px 20px;
+        }
+      `}</style>
+
 
       <canvas ref={canvasRef} className="hidden" />
 

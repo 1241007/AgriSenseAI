@@ -47,6 +47,7 @@ pip-wheel-metadata/
 # ML model cache (HuggingFace/Large weights)
 /models/
 /agriai-backend/artifacts/
+/agriai-backend/app/data/models/
 /agriai-frontend/artifacts/
 *.joblib
 *.pkl
