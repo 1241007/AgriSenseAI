@@ -134,6 +134,27 @@ export interface CropHistoryCreate {
   season?: string;
 }
 
+// ── Predictions ──────────────────────────────────────────────────────────────
+
+export interface SoilPredictionResponse {
+  soil_type: string;
+  confidence: number;
+  deficiencies: string[];
+  recommendations: string[];
+  prediction_id: string;
+}
+
+export interface SoilPredictionRequest {
+  report_id?: string;
+  inline_values?: {
+    nitrogen: number;
+    phosphorus: number;
+    potassium: number;
+    ph: number;
+    moisture: number;
+  };
+}
+
 // ── User types ───────────────────────────────────────────────────────────────
 
 export interface UserResponse {
@@ -237,4 +258,12 @@ export const api = {
     request<CropHistoryResponse[]>(
       `/farms/${farmId}/crop-history?page=${page}&page_size=${pageSize}`
     ),
+
+  // ── Predictions ────────────────────────────────────────────────────────────
+
+  predictSoil: (data: SoilPredictionRequest) =>
+    request<SoilPredictionResponse>("/predict/soil", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };

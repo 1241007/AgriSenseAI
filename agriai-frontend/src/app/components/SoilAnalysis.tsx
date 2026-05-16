@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { api, SoilPredictionResponse } from '../api/client';
 import {
   Bell,
   Search,
@@ -78,10 +79,26 @@ export default function SoilAnalysis() {
     organicCarbon: 2.4
   });
 
+  const [prediction, setPrediction] = useState<SoilPredictionResponse | null>(null);
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     setAnalyzing(true);
-    setTimeout(() => setAnalyzing(false), 2000);
+    try {
+      const res = await api.predictSoil({
+        inline_values: {
+          nitrogen: soilData.nitrogen,
+          phosphorus: soilData.phosphorus,
+          potassium: soilData.potassium,
+          ph: soilData.pH,
+          moisture: soilData.moisture
+        }
+      });
+      setPrediction(res);
+    } catch (err) {
+      console.error("Prediction failed:", err);
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const getFertilityScore = () => {
@@ -577,66 +594,33 @@ export default function SoilAnalysis() {
             <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
               <Lightbulb className="w-5 h-5 text-emerald-600" />
               AI-Generated Recommendations
+              {prediction && <span className="ml-2 text-sm bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">{prediction.soil_type} ({(prediction.confidence * 100).toFixed(1)}% match)</span>}
             </h3>
             <div className="space-y-4">
-              {[
-                {
-                  type: 'success',
-                  title: 'Excellent Nitrogen Levels',
-                  recommendation: 'Current nitrogen levels are optimal for wheat cultivation. Maintain current fertilization schedule.',
-                  priority: 'Low'
-                },
-                {
-                  type: 'warning',
-                  title: 'Phosphorus Below Optimal',
-                  recommendation: 'Apply 25-30 kg/ha of phosphate fertilizer. Consider using DAP (Diammonium Phosphate) for best results.',
-                  priority: 'Medium'
-                },
-                {
-                  type: 'info',
-                  title: 'pH Level Recommendation',
-                  recommendation: 'Current pH of 6.8 is suitable for most crops. For acid-loving plants, consider slight adjustment.',
-                  priority: 'Low'
-                },
-                {
-                  type: 'success',
-                  title: 'Moisture Content Ideal',
-                  recommendation: 'Soil moisture at 65% is perfect for current crop stage. Continue regular irrigation schedule.',
-                  priority: 'Low'
-                }
-              ].map((rec, idx) => (
-                <div
-                  key={idx}
-                  className={`p-4 rounded-xl border-l-4 ${
-                    rec.type === 'success'
-                      ? 'bg-green-50 border-green-500'
-                      : rec.type === 'warning'
-                      ? 'bg-amber-50 border-amber-500'
-                      : 'bg-blue-50 border-blue-500'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-bold text-gray-800 flex items-center gap-2">
-                      {rec.type === 'success' && <CheckCircle className="w-5 h-5 text-green-600" />}
-                      {rec.type === 'warning' && <AlertCircle className="w-5 h-5 text-amber-600" />}
-                      {rec.type === 'info' && <Info className="w-5 h-5 text-blue-600" />}
-                      {rec.title}
-                    </h4>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        rec.priority === 'High'
-                          ? 'bg-red-100 text-red-700'
-                          : rec.priority === 'Medium'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {rec.priority} Priority
-                    </span>
+              {prediction ? (
+                prediction.recommendations.map((rec, idx) => (
+                  <div
+                    key={idx}
+                    className="p-4 rounded-xl border-l-4 bg-green-50 border-green-500"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-bold text-gray-800 flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        AI Recommendation
+                      </h4>
+                    </div>
+                    <p className="text-gray-700 text-sm leading-relaxed">{rec}</p>
                   </div>
-                  <p className="text-gray-700 text-sm leading-relaxed">{rec.recommendation}</p>
+                ))
+              ) : (
+                <div className="p-8 rounded-xl border-2 border-dashed border-emerald-200 text-center bg-emerald-50/50">
+                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                    <Zap className="w-8 h-8 text-emerald-400" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-800 mb-2">Ready for Analysis</h4>
+                  <p className="text-gray-500">Run AI Analysis to see personalized recommendations based on your soil data.</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </main>
