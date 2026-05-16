@@ -22,9 +22,10 @@ dependencies = [
     "langchain",
     "langchain-community",
     "langchain-openai",
-    "langgraph"
+    "langgraph",
     "Pillow==11.0.0",
-    "python-multipart==0.0.17"
+    "python-multipart==0.0.17",
+    "httpx==0.27.2"
 ]
 
 [tool.hatch.build.targets.wheel]

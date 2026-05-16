@@ -223,6 +223,16 @@ export interface DiseasePredictionResponse {
   prediction_id?: string;
 }
 
+export interface YieldPredictionRequest {
+  farm_id: string;
+  crop_name: string;
+  soil_report_id: string;
+  season: string;
+}
+
+export interface YieldPredictionResponse {
+  predicted_yield_kg_per_hectare: number;
+  total_yield_kg: number;
 export interface YieldPredictionResponse {
   predicted_yield_kg_per_hectare: number;
   total_predicted_yield_kg: number;
@@ -231,11 +241,34 @@ export interface YieldPredictionResponse {
     high: number;
     confidence_level: number;
   };
+  key_factors: Array<{
+    factor: string;
+    impact: string;
+  }>;
   key_factors: string[];
   prediction_id: string;
   cached?: boolean;
 }
 
+// ── Weather types ────────────────────────────────────────────────────────────
+
+export interface WeatherForecastItem {
+  date: string;
+  temp_max: number;
+  temp_min: number;
+  precipitation: number;
+  condition: string;
+  icon?: string;
+}
+
+export interface WeatherResponse {
+  location: string;
+  latitude: number;
+  longitude: number;
+  current_temp: number | null;
+  summary: string;
+  forecast: WeatherForecastItem[];
+  agricultural_advisory?: string;
 export interface YieldPredictionRequest {
   farm_id: string;
   crop_name: string;
@@ -377,4 +410,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  getWeather: (params: { farm_id?: string; lat?: number; lon?: number; days?: number }) => {
+    const query = new URLSearchParams();
+    if (params.farm_id) query.append("farm_id", params.farm_id);
+    if (params.lat) query.append("lat", params.lat.toString());
+    if (params.lon) query.append("lon", params.lon.toString());
+    if (params.days) query.append("days", params.days.toString());
+    return request<WeatherResponse>(`/predict/weather?${query.toString()}`);
+  },
 };

@@ -55,6 +55,7 @@ def load_models() -> None:
         logger.info("Loading plant disease detection model...")
         MODEL_REGISTRY["plant_disease"] = pipeline(
             "image-classification", 
+            model="nateraw/vit-base-beans"
             model="spandan-mazumder/plant-disease-recognition"
         )
         logger.info("plant_disease model loaded successfully.")

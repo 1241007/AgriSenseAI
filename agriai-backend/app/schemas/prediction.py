@@ -100,3 +100,25 @@ class DiseaseResponse(BaseModel):
     is_healthy: bool
     prediction_id: uuid.UUID | None = None
 
+
+class YieldRequest(BaseModel):
+    farm_id: uuid.UUID
+    crop_name: str
+    soil_report_id: uuid.UUID
+    season: str
+
+
+class YieldRange(BaseModel):
+    low: float
+    high: float
+    confidence_level: float
+
+
+class YieldResponse(BaseModel):
+    predicted_yield_kg_per_hectare: float
+    total_yield_kg: float
+    yield_range: YieldRange
+    key_factors: list[dict]
+    prediction_id: uuid.UUID | None = None
+    cached: bool = False
+
