@@ -1,29 +1,33 @@
 from uuid import UUID
+import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
-
-from app.schemas.prediction import SoilRequest, SoilResponse, CropRequest, CropResponse, RecommendedCrop
-from app.schemas.prediction import SoilRequest, SoilResponse, FertilizerRequest, FertilizerResponse, DiseaseResponse
+from app.schemas.prediction import (
+    SoilRequest, SoilResponse, 
+    CropRequest, CropResponse, RecommendedCrop,
+    FertilizerRequest, FertilizerResponse,
+    DiseaseResponse,
+    YieldRequest, YieldResponse, YieldRange
+)
 
 from app.db.models.prediction import Prediction, PredictionType
 from app.db.models.soil_report import SoilReport
 from app.db.models.farm import Farm
-from app.models.soil import run_soil_prediction
+from app.db.models.crop_history import CropHistory
 
+from app.models.soil import run_soil_prediction
 from app.models.crop import predict_crop_llm
 from app.services.crop_rules_engine import get_rule_based_recommendations
-
 from app.models.fertilizer import predict_fertilizer_type
 from app.models.disease import predict_disease_model
+from app.models.loader import get_model
 
 from app.utils.cache import cache_get, cache_set, make_cache_key
 from app.utils.image_utils import preprocess_for_inference
-from fastapi import UploadFile
-
-from sqlalchemy import select
-from sqlalchemy.orm import joinedload
-
+from app.services.weather_service import weather_service
 
 async def predict_soil(request: SoilRequest, user_id: UUID, session: AsyncSession) -> SoilResponse:
     if request.report_id:
@@ -34,17 +38,11 @@ async def predict_soil(request: SoilRequest, user_id: UUID, session: AsyncSessio
             raise HTTPException(status_code=404, detail="Soil report not found")
         if report.farm.user_id != user_id:
             raise HTTPException(status_code=403, detail="Not authorized to access this report")
-        n = report.nitrogen_ppm or 0.0
-        p = report.phosphorus_ppm or 0.0
-        k = report.potassium_ppm or 0.0
-        ph = report.ph_level or 7.0
-        m = report.moisture_percent or 50.0
+        n, p, k = report.nitrogen_ppm or 0.0, report.phosphorus_ppm or 0.0, report.potassium_ppm or 0.0
+        ph, m = report.ph_level or 7.0, report.moisture_percent or 50.0
     elif request.inline_values:
-        n = request.inline_values.nitrogen
-        p = request.inline_values.phosphorus
-        k = request.inline_values.potassium
-        ph = request.inline_values.ph
-        m = request.inline_values.moisture
+        n, p, k = request.inline_values.nitrogen, request.inline_values.phosphorus, request.inline_values.potassium
+        ph, m = request.inline_values.ph, request.inline_values.moisture
     else:
         raise HTTPException(status_code=400, detail="Must provide report_id or inline_values")
 
@@ -65,7 +63,6 @@ async def predict_soil(request: SoilRequest, user_id: UUID, session: AsyncSessio
         result_dict = cached
         is_cached = True
     
-    # Save to db
     prediction = Prediction(
         user_id=user_id,
         prediction_type=PredictionType.soil,
@@ -77,18 +74,12 @@ async def predict_soil(request: SoilRequest, user_id: UUID, session: AsyncSessio
     await session.refresh(prediction)
 
     return SoilResponse(
-        soil_type=result_dict["soil_type"],
-        confidence=result_dict["confidence"],
-        deficiencies=result_dict["deficiencies"],
-        recommendations=result_dict["recommendations"],
+        **result_dict,
         prediction_id=prediction.prediction_id,
         cached=is_cached
-   
+    )
+
 async def predict_crop(request: CropRequest, user_id: UUID, session: AsyncSession) -> CropResponse:
-    # 1. Fetch Soil Data
-
-async def predict_fertilizer(request: FertilizerRequest, user_id: UUID, session: AsyncSession) -> FertilizerResponse:
-
     if request.soil_report_id:
         query = select(SoilReport).options(joinedload(SoilReport.farm)).where(SoilReport.report_id == request.soil_report_id)
         result = await session.execute(query)
@@ -99,17 +90,12 @@ async def predict_fertilizer(request: FertilizerRequest, user_id: UUID, session:
             raise HTTPException(status_code=403, detail="Not authorized to access this report")
         
         soil_data = {
-            "N": report.nitrogen_ppm or 0.0,
-            "P": report.phosphorus_ppm or 0.0,
-            "K": report.potassium_ppm or 0.0,
-            "ph": report.ph_level or 7.0,
-            "moisture": report.moisture_percent or 50.0
+            "N": report.nitrogen_ppm or 0.0, "P": report.phosphorus_ppm or 0.0, "K": report.potassium_ppm or 0.0,
+            "ph": report.ph_level or 7.0, "moisture": report.moisture_percent or 50.0
         }
     else:
-        # For now, we require a soil report for crop recommendation
         raise HTTPException(status_code=400, detail="soil_report_id is required for crop recommendation")
 
-    # 2. Get Farm/Region context
     region = "Unknown"
     if request.farm_id:
         query = select(Farm).where(Farm.farm_id == request.farm_id, Farm.user_id == user_id)
@@ -118,7 +104,6 @@ async def predict_fertilizer(request: FertilizerRequest, user_id: UUID, session:
         if farm:
             region = farm.region or "Unknown"
 
-    # 3. Cache Check
     previous_crops = [request.previous_crop] if request.previous_crop else []
     cache_key = make_cache_key("crop_pred", soil=soil_data, season=request.season, pc=previous_crops)
     cached = await cache_get(cache_key)
@@ -128,26 +113,13 @@ async def predict_fertilizer(request: FertilizerRequest, user_id: UUID, session:
         is_cached = True
     else:
         try:
-            # Try LLM-based recommendation
-            result_dict = await predict_crop_llm(
-                soil_data=soil_data,
-                region=region,
-                season=request.season,
-                previous_crops=previous_crops
-            )
+            result_dict = await predict_crop_llm(soil_data=soil_data, region=region, season=request.season, previous_crops=previous_crops)
             is_cached = False
         except Exception:
-            # Fallback to Rule-based recommendation
-            result_dict = get_rule_based_recommendations(
-                soil_data=soil_data,
-                season=request.season,
-                previous_crops=previous_crops
-            )
+            result_dict = get_rule_based_recommendations(soil_data=soil_data, season=request.season, previous_crops=previous_crops)
             is_cached = False
-        
         await cache_set(cache_key, result_dict)
 
-    # 4. Save Prediction to DB
     prediction = Prediction(
         user_id=user_id,
         prediction_type=PredictionType.crop,
@@ -156,17 +128,35 @@ async def predict_fertilizer(request: FertilizerRequest, user_id: UUID, session:
             "farm_id": str(request.farm_id) if request.farm_id else None,
             "season": request.season,
             "previous_crop": request.previous_crop
-        n = report.nitrogen_ppm or 0.0
-        p = report.phosphorus_ppm or 0.0
-        k = report.potassium_ppm or 0.0
-        ph = report.ph_level or 7.0
-        m = report.moisture_percent or 50.0
+        },
+        result=result_dict
+    )
+    session.add(prediction)
+    await session.commit()
+    await session.refresh(prediction)
+
+    return CropResponse(
+        recommended_crops=[RecommendedCrop(**c) for c in result_dict["recommended_crops"]],
+        rotation_advice=result_dict["rotation_advice"],
+        inference_mode=result_dict.get("inference_mode", "llm"),
+        prediction_id=prediction.prediction_id,
+        cached=is_cached
+    )
+
+async def predict_fertilizer(request: FertilizerRequest, user_id: UUID, session: AsyncSession) -> FertilizerResponse:
+    if request.soil_report_id:
+        query = select(SoilReport).options(joinedload(SoilReport.farm)).where(SoilReport.report_id == request.soil_report_id)
+        result = await session.execute(query)
+        report = result.scalar_one_or_none()
+        if not report:
+            raise HTTPException(status_code=404, detail="Soil report not found")
+        if report.farm.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to access this report")
+        n, p, k = report.nitrogen_ppm or 0.0, report.phosphorus_ppm or 0.0, report.potassium_ppm or 0.0
+        ph, m = report.ph_level or 7.0, report.moisture_percent or 50.0
     elif request.inline_values:
-        n = request.inline_values.nitrogen
-        p = request.inline_values.phosphorus
-        k = request.inline_values.potassium
-        ph = request.inline_values.ph
-        m = request.inline_values.moisture
+        n, p, k = request.inline_values.nitrogen, request.inline_values.phosphorus, request.inline_values.potassium
+        ph, m = request.inline_values.ph, request.inline_values.moisture
     else:
         raise HTTPException(status_code=400, detail="Must provide soil_report_id or inline_values")
 
@@ -174,11 +164,8 @@ async def predict_fertilizer(request: FertilizerRequest, user_id: UUID, session:
     cached = await cache_get(cache_key)
 
     if not cached:
-        prediction_result = predict_fertilizer_type(
-            nitrogen=n, phosphorus=p, potassium=k, ph=ph, moisture=m, crop_name=request.crop_name
-        )
+        prediction_result = predict_fertilizer_type(nitrogen=n, phosphorus=p, potassium=k, ph=ph, moisture=m, crop_name=request.crop_name)
         total_dosage = prediction_result.base_dosage_kg_per_hectare * request.area_hectares
-        
         result_dict = {
             "fertilizer_type": prediction_result.fertilizer_type,
             "confidence": prediction_result.confidence,
@@ -206,39 +193,12 @@ async def predict_fertilizer(request: FertilizerRequest, user_id: UUID, session:
     await session.commit()
     await session.refresh(prediction)
 
-    return CropResponse(
-        recommended_crops=[RecommendedCrop(**c) for c in result_dict["recommended_crops"]],
-        rotation_advice=result_dict["rotation_advice"],
-        inference_mode=result_dict.get("inference_mode", "llm"),
-        prediction_id=prediction.prediction_id,
-        cached=is_cached
-    return FertilizerResponse(
-        fertilizer_type=result_dict["fertilizer_type"],
-        dosage_kg_per_hectare=result_dict["dosage_kg_per_hectare"],
-        total_dosage_kg=result_dict["total_dosage_kg"],
-        application_method=result_dict["application_method"],
-        additional_notes=result_dict["additional_notes"],
-        confidence=result_dict["confidence"],
-        cached=is_cached,
-        prediction_id=prediction.prediction_id
-    )
+    return FertilizerResponse(**result_dict, cached=is_cached, prediction_id=prediction.prediction_id)
 
-
-async def predict_disease(
-    image_file: UploadFile, 
-    user_id: UUID, 
-    session: AsyncSession
-) -> DiseaseResponse:
-    # Read image
+async def predict_disease(image_file: UploadFile, user_id: UUID, session: AsyncSession) -> DiseaseResponse:
     content = await image_file.read()
-    
-    # Preprocess
     image_obj = preprocess_for_inference(content)
-    
-    # Predict
     result_dict = predict_disease_model(image_obj)
-    
-    # Save to db (without storing the image itself in this simplified version)
     prediction = Prediction(
         user_id=user_id,
         prediction_type=PredictionType.disease,
@@ -248,14 +208,79 @@ async def predict_disease(
     session.add(prediction)
     await session.commit()
     await session.refresh(prediction)
+    return DiseaseResponse(**result_dict, prediction_id=prediction.prediction_id)
+
+async def predict_yield(request: YieldRequest, user_id: UUID, session: AsyncSession) -> YieldResponse:
+    # 1. Feature Aggregation
+    query = select(Farm).options(joinedload(Farm.soil_reports)).where(Farm.farm_id == request.farm_id, Farm.user_id == user_id)
+    result = await session.execute(query)
+    farm = result.unique().scalar_one_or_none()
+    if not farm:
+        raise HTTPException(status_code=404, detail="Farm not found")
+
+    report = next((r for r in farm.soil_reports if r.report_id == request.soil_report_id), None)
+    if not report:
+        raise HTTPException(status_code=404, detail="Soil report not found or does not belong to this farm")
+
+    # Async weather fetch
+    weather = await weather_service.get_seasonal_forecast(farm.region or "Unknown", request.season)
     
-    return DiseaseResponse(
-        disease_name=result_dict["disease_name"],
-        scientific_name=result_dict["scientific_name"],
-        confidence=result_dict["confidence"],
-        severity=result_dict["severity"],
-        affected_area_pct=result_dict["affected_area_pct"],
-        treatment=result_dict["treatment"],
-        is_healthy=result_dict["is_healthy"],
-        prediction_id=prediction.prediction_id
+    # Simple crop encoding
+    crop_map = {"wheat": 0, "rice": 1, "corn": 2, "maize": 2, "soybean": 3, "cotton": 4}
+    crop_encoded = crop_map.get(request.crop_name.lower(), 5)
+    
+    # Feature vector: [crop_encoded, area, N, P, K, pH, moisture, avg_temp, avg_rain]
+    features = np.array([[
+        float(crop_encoded),
+        float(farm.area_hectares or 1.0),
+        float(report.nitrogen_ppm or 50.0),
+        float(report.phosphorus_ppm or 25.0),
+        float(report.potassium_ppm or 25.0),
+        float(report.ph_level or 7.0),
+        float(report.moisture_percent or 50.0),
+        float(weather["avg_temp"]),
+        float(weather["avg_rain"])
+    ]])
+
+    cache_key = make_cache_key("yield_pred", farm_id=str(request.farm_id), crop=request.crop_name, report_id=str(request.soil_report_id), season=request.season)
+    cached = await cache_get(cache_key)
+
+    if cached:
+        result_dict = cached
+        is_cached = True
+    else:
+        model = get_model("yield_predict")
+        prediction_result = model.predict(features)
+        
+        yield_per_hectare = prediction_result["yield_point"]
+        total_yield = yield_per_hectare * (farm.area_hectares or 1.0)
+        
+        result_dict = {
+            "predicted_yield_kg_per_hectare": yield_per_hectare,
+            "total_predicted_yield_kg": total_yield,
+            "yield_range": prediction_result["interval"],
+            "key_factors": ["Soil Health", "Weather Forecast", "Crop Variety"]
+        }
+        await cache_set(cache_key, result_dict)
+        is_cached = False
+
+    prediction = Prediction(
+        user_id=user_id,
+        prediction_type=PredictionType.yield_,
+        input_data={
+            "farm_id": str(request.farm_id),
+            "crop_name": request.crop_name,
+            "soil_report_id": str(request.soil_report_id),
+            "season": request.season
+        },
+        result=result_dict
+    )
+    session.add(prediction)
+    await session.commit()
+    await session.refresh(prediction)
+
+    return YieldResponse(
+        **result_dict,
+        prediction_id=prediction.prediction_id,
+        cached=is_cached
     )

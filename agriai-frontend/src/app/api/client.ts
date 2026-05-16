@@ -182,6 +182,8 @@ export interface CropRecommendationRequest {
   farm_id?: string;
   season: string;
   previous_crop?: string;
+}
+
 export interface FertilizerPredictionResponse {
   fertilizer_type: string;
   dosage_kg_per_hectare: number;
@@ -219,6 +221,26 @@ export interface DiseasePredictionResponse {
   };
   is_healthy: boolean;
   prediction_id?: string;
+}
+
+export interface YieldPredictionResponse {
+  predicted_yield_kg_per_hectare: number;
+  total_predicted_yield_kg: number;
+  yield_range: {
+    low: number;
+    high: number;
+    confidence_level: number;
+  };
+  key_factors: string[];
+  prediction_id: string;
+  cached?: boolean;
+}
+
+export interface YieldPredictionRequest {
+  farm_id: string;
+  crop_name: string;
+  soil_report_id: string;
+  season: string;
 }
 
 // ── User types ───────────────────────────────────────────────────────────────
@@ -348,5 +370,11 @@ export const api = {
     request<DiseasePredictionResponse>("/predict/disease", {
       method: "POST",
       body: formData,
+    }),
+
+  predictYield: (data: YieldPredictionRequest) =>
+    request<YieldPredictionResponse>("/predict/yield", {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
 };

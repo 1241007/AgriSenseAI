@@ -44,7 +44,28 @@ class CropResponse(BaseModel):
     inference_mode: str
     prediction_id: uuid.UUID
     cached: bool = False
-=======
+class YieldRange(BaseModel):
+    low: float
+    high: float
+    confidence_level: float
+
+
+class YieldRequest(BaseModel):
+    farm_id: uuid.UUID
+    crop_name: str
+    soil_report_id: uuid.UUID
+    season: str
+
+
+class YieldResponse(BaseModel):
+    predicted_yield_kg_per_hectare: float
+    total_predicted_yield_kg: float
+    yield_range: YieldRange
+    key_factors: list[str]
+    prediction_id: uuid.UUID
+    cached: bool = False
+
+
 class FertilizerRequest(BaseModel):
     soil_report_id: uuid.UUID | None = None
     inline_values: SoilInlineValues | None = None
