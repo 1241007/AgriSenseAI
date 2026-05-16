@@ -1,4 +1,4 @@
-# Master Implementation Plan — AgriAI
+ # Master Implementation Plan — AgriAI
 
 **Total Features:** 9 specs + 1 cross-cutting  
 **Total Estimated Effort:** ~19 days  

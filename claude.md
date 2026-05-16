@@ -331,13 +331,10 @@ Client-side routes defined in `Frontend/src/app/App.tsx`:
 - `/soil-analysis` → Soil analysis (static data — needs API wiring)
 - `/fertilizer` → Fertilizer recommendation (static data — needs API wiring)
 - `/disease-detection` → Plant disease detection (static data — needs API wiring)
-
-**Planned (pages need to be created):**
 - `/crop-recommendation` → Crop recommendation
 - `/yield-prediction` → Yield prediction
 - `/weather` → Weather forecast
-- `/history` → Prediction history
-- `/feedback` → Feedback submission
+- `/history & Feedback` → Prediction history&Feedback submission 
 
 ### Frontend Architecture Notes
 

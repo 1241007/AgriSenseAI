@@ -3,7 +3,8 @@
     "allow": [
       "Bash(venv/Scripts/pip install *)",
       "Bash(venv/Scripts/python.exe app/test_models.py)",
-      "Bash(venv/Scripts/python.exe *)"
+      "Bash(venv/Scripts/python.exe *)",
+      "Bash(alembic revision *)"
     ]
   }
 }
