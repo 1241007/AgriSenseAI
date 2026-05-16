@@ -24,6 +24,27 @@ class SoilResponse(BaseModel):
     cached: bool = False
 
 
+
+class RecommendedCrop(BaseModel):
+    crop_name: str
+    suitability_score: float
+    reason: str = "Suitable based on soil and seasonal conditions"
+
+
+class CropRequest(BaseModel):
+    soil_report_id: uuid.UUID | None = None
+    farm_id: uuid.UUID | None = None
+    season: str
+    previous_crop: str | None = None
+
+
+class CropResponse(BaseModel):
+    recommended_crops: list[RecommendedCrop]
+    rotation_advice: str
+    inference_mode: str
+    prediction_id: uuid.UUID
+    cached: bool = False
+=======
 class FertilizerRequest(BaseModel):
     soil_report_id: uuid.UUID | None = None
     inline_values: SoilInlineValues | None = None
@@ -57,3 +78,4 @@ class DiseaseResponse(BaseModel):
     treatment: TreatmentInfo
     is_healthy: bool
     prediction_id: uuid.UUID | None = None
+

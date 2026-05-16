@@ -22,5 +22,12 @@ class Settings(BaseSettings):
     # Rate limiting
     RATE_LIMIT_PER_MINUTE: int = 10
 
+    # LLM
+    LLM_PROVIDER: str = "ollama"  # ollama, openai, etc.
+    OLLAMA_MODEL: str = "llama3"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OPENAI_MODEL: str = "gpt-3.5-turbo"
+    OPENAI_API_KEY: str | None = None
+
 
 settings = Settings()

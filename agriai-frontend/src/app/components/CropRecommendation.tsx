@@ -23,6 +23,8 @@ import {
   Lightbulb
 } from 'lucide-react';
 import Sidebar from './Sidebar';
+import { api, FarmResponse, SoilReportResponse, CropRecommendationResponse } from '../api/client';
+import { useEffect } from 'react';
 
 const recommendedCrops = [
   {
@@ -97,21 +99,66 @@ const recommendedCrops = [
 
 export default function CropRecommendation() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [farms, setFarms] = useState<FarmResponse[]>([]);
+  const [reports, setReports] = useState<SoilReportResponse[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
   const [formData, setFormData] = useState({
-    nitrogen: '',
-    phosphorus: '',
-    potassium: '',
-    ph: '',
+    farmId: '',
+    reportId: '',
     season: '',
-    previousCrop: '',
-    region: ''
+    previousCrop: ''
   });
+  const [results, setResults] = useState<CropRecommendationResponse | null>(null);
   const [showResults, setShowResults] = useState(false);
 
+  useEffect(() => {
+    const fetchFarms = async () => {
+      try {
+        const data = await api.getFarms();
+        setFarms(data);
+      } catch (err) {
+        console.error("Failed to fetch farms", err);
+      }
+    };
+    fetchFarms();
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchReports = async () => {
+      if (formData.farmId) {
+        try {
+          const data = await api.getSoilReports(formData.farmId);
+          setReports(data);
+        } catch (err) {
+          console.error("Failed to fetch reports", err);
+        }
+      } else {
+        setReports([]);
+      }
+    };
+    fetchReports();
+  }, [formData.farmId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setShowResults(true);
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.predictCrop({
+        farm_id: formData.farmId,
+        soil_report_id: formData.reportId,
+        season: formData.season,
+        previous_crop: formData.previousCrop
+      });
+      setResults(data);
+      setShowResults(true);
+    } catch (err: any) {
+      setError(err.message || "Failed to get recommendations");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -202,62 +249,45 @@ export default function CropRecommendation() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Soil Nutrients */}
-              <div>
-                <h3 className="font-medium text-gray-800 mb-4">Soil Nutrient Report</h3>
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-2">Nitrogen (N) kg/ha</label>
-                    <input
-                      type="number"
-                      value={formData.nitrogen}
-                      onChange={(e) => setFormData({ ...formData, nitrogen: e.target.value })}
-                      placeholder="e.g., 45"
-                      className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-2">Phosphorus (P) kg/ha</label>
-                    <input
-                      type="number"
-                      value={formData.phosphorus}
-                      onChange={(e) => setFormData({ ...formData, phosphorus: e.target.value })}
-                      placeholder="e.g., 30"
-                      className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-2">Potassium (K) kg/ha</label>
-                    <input
-                      type="number"
-                      value={formData.potassium}
-                      onChange={(e) => setFormData({ ...formData, potassium: e.target.value })}
-                      placeholder="e.g., 35"
-                      className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-2">pH Level</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.ph}
-                      onChange={(e) => setFormData({ ...formData, ph: e.target.value })}
-                      placeholder="e.g., 6.5"
-                      className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      required
-                    />
-                  </div>
+              {/* Farm and Report Selection */}
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-700 mb-2">Farm</label>
+                  <select
+                    value={formData.farmId}
+                    onChange={(e) => setFormData({ ...formData, farmId: e.target.value, reportId: '' })}
+                    className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                  >
+                    <option value="">Select Farm</option>
+                    {farms.map(f => (
+                      <option key={f.farm_id} value={f.farm_id}>{f.name} ({f.region || 'No region'})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-2">Soil Report</label>
+                  <select
+                    value={formData.reportId}
+                    onChange={(e) => setFormData({ ...formData, reportId: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                    disabled={!formData.farmId}
+                  >
+                    <option value="">Select Soil Report</option>
+                    {reports.map(r => (
+                      <option key={r.report_id} value={r.report_id}>
+                        Report from {new Date(r.reported_at).toLocaleDateString()}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               {/* Other Details */}
               <div>
-                <h3 className="font-medium text-gray-800 mb-4">Farm Context</h3>
-                <div className="grid md:grid-cols-3 gap-4">
+                <h3 className="font-medium text-gray-800 mb-4">Context</h3>
+                <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-700 mb-2">Season</label>
                     <select
@@ -267,54 +297,42 @@ export default function CropRecommendation() {
                       required
                     >
                       <option value="">Select Season</option>
-                      <option value="kharif">Kharif (Monsoon)</option>
-                      <option value="rabi">Rabi (Winter)</option>
-                      <option value="zaid">Zaid (Summer)</option>
-                      <option value="whole-year">Whole Year</option>
+                      <option value="Kharif">Kharif (Monsoon)</option>
+                      <option value="Rabi">Rabi (Winter)</option>
+                      <option value="Zaid">Zaid (Summer)</option>
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm text-gray-700 mb-2">Previous Crop</label>
-                    <select
+                    <input
+                      type="text"
                       value={formData.previousCrop}
                       onChange={(e) => setFormData({ ...formData, previousCrop: e.target.value })}
+                      placeholder="e.g., Wheat"
                       className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      required
-                    >
-                      <option value="">Select Previous Crop</option>
-                      <option value="rice">Rice</option>
-                      <option value="wheat">Wheat</option>
-                      <option value="cotton">Cotton</option>
-                      <option value="sugarcane">Sugarcane</option>
-                      <option value="maize">Maize</option>
-                      <option value="none">None (First Crop)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-2">Region</label>
-                    <select
-                      value={formData.region}
-                      onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                      className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      required
-                    >
-                      <option value="">Select Region</option>
-                      <option value="north">North</option>
-                      <option value="south">South</option>
-                      <option value="east">East</option>
-                      <option value="west">West</option>
-                      <option value="central">Central</option>
-                    </select>
+                    />
                   </div>
                 </div>
               </div>
 
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5" />
+                  {error}
+                </div>
+              )}
+
               <button
                 type="submit"
-                className="w-full px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                disabled={loading}
+                className="w-full px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70"
               >
-                <Sparkles className="w-5 h-5" />
-                Get AI Recommendations
+                {loading ? (
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-5 h-5" />
+                )}
+                {loading ? 'Analyzing...' : 'Get AI Recommendations'}
               </button>
             </form>
           </div>
@@ -325,10 +343,32 @@ export default function CropRecommendation() {
               {/* Analytics Overview */}
               <div className="grid md:grid-cols-4 gap-6">
                 {[
-                  { label: 'Best Match', value: 'Rice', icon: Sprout, color: 'from-green-500 to-emerald-500' },
-                  { label: 'Avg Suitability', value: '86%', icon: BarChart3, color: 'from-blue-500 to-indigo-500' },
-                  { label: 'Season', value: 'Kharif', icon: Calendar, color: 'from-purple-500 to-violet-500' },
-                  { label: 'Region', value: 'North', icon: MapPin, color: 'from-orange-500 to-amber-500' }
+                  { 
+                    label: 'Best Match', 
+                    value: results.recommended_crops[0]?.crop_name || 'N/A', 
+                    icon: Sprout, 
+                    color: 'from-green-500 to-emerald-500' 
+                  },
+                  { 
+                    label: 'Avg Suitability', 
+                    value: results.recommended_crops.length > 0 
+                      ? `${(results.recommended_crops.reduce((acc, curr) => acc + curr.suitability_score, 0) / results.recommended_crops.length * 100).toFixed(0)}%`
+                      : '0%', 
+                    icon: BarChart3, 
+                    color: 'from-blue-500 to-indigo-500' 
+                  },
+                  { 
+                    label: 'Season', 
+                    value: formData.season || 'N/A', 
+                    icon: Calendar, 
+                    color: 'from-purple-500 to-violet-500' 
+                  },
+                  { 
+                    label: 'Region', 
+                    value: farms.find(f => f.farm_id === formData.farmId)?.region || 'N/A', 
+                    icon: MapPin, 
+                    color: 'from-orange-500 to-amber-500' 
+                  }
                 ].map((stat, index) => (
                   <div
                     key={index}
@@ -350,120 +390,48 @@ export default function CropRecommendation() {
                     <TrendingUpIcon className="w-6 h-6 text-emerald-600" />
                     <h2 className="text-xl font-bold text-gray-800">Recommended Crops (Ranked)</h2>
                   </div>
-                  <button className="flex items-center gap-2 px-4 py-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all">
-                    <RefreshCw className="w-4 h-4" />
+                  <button 
+                    onClick={(e) => handleSubmit(e as any)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     Refresh
                   </button>
                 </div>
 
                 <div className="grid lg:grid-cols-2 gap-6">
-                  {recommendedCrops.map((crop, index) => (
+                  {results?.recommended_crops.map((crop, index) => (
                     <div
                       key={index}
                       className="backdrop-blur-lg bg-white/70 rounded-2xl border-2 border-emerald-100 overflow-hidden hover:shadow-xl transition-all"
                     >
                       {/* Header */}
-                      <div className={`bg-gradient-to-r ${crop.bgGradient} p-6 text-white`}>
+                      <div className={`bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white`}>
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="text-5xl">{crop.image}</div>
+                            <div className="text-5xl">🌾</div>
                             <div>
                               <div className="flex items-center gap-2 mb-1">
-                                <h3 className="text-2xl font-bold">{crop.name}</h3>
+                                <h3 className="text-2xl font-bold">{crop.crop_name}</h3>
                                 <span className="px-2 py-1 bg-white/20 backdrop-blur-lg rounded-lg text-xs">
                                   #{index + 1}
                                 </span>
                               </div>
-                              <p className="text-white/90">Expected: {crop.expectedYield}</p>
+                              <p className="text-white/90">Suitability Score: {(crop.suitability_score * 100).toFixed(0)}%</p>
                             </div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-4xl font-bold">{crop.suitability}%</div>
-                            <div className="text-xs text-white/80">Suitability</div>
                           </div>
                         </div>
                       </div>
 
                       {/* Content */}
                       <div className="p-6 space-y-4">
-                        {/* Metrics */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                            <Cloud className="w-5 h-5 text-blue-600" />
-                            <div>
-                              <div className="text-xs text-gray-600">Weather Match</div>
-                              <div className="font-bold text-gray-800">{crop.weatherCompatibility}%</div>
-                            </div>
+                        <div className="p-4 bg-emerald-50 rounded-xl">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Info className="w-4 h-4 text-emerald-600" />
+                            <span className="text-sm font-bold text-gray-800">Reasoning</span>
                           </div>
-                          <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg">
-                            <TestTube className="w-5 h-5 text-amber-600" />
-                            <div>
-                              <div className="text-xs text-gray-600">Soil Match</div>
-                              <div className="font-bold text-gray-800">{crop.soilMatch}%</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                            <BarChart3 className="w-5 h-5 text-green-600" />
-                            <div>
-                              <div className="text-xs text-gray-600">Market Demand</div>
-                              <div className="font-bold text-gray-800">{crop.marketDemand}%</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
-                            <RefreshCw className="w-5 h-5 text-purple-600" />
-                            <div>
-                              <div className="text-xs text-gray-600">Rotation Score</div>
-                              <div className="font-bold text-gray-800">{crop.rotationScore}%</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Details */}
-                        <div className="grid grid-cols-3 gap-3 pt-3 border-t border-emerald-100">
-                          <div>
-                            <div className="text-xs text-gray-600 mb-1">Water Req.</div>
-                            <div className="font-medium text-gray-800">{crop.waterReq}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-gray-600 mb-1">Profit</div>
-                            <div className="font-medium text-gray-800">{crop.profitMargin}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-gray-600 mb-1">Growth</div>
-                            <div className="font-medium text-gray-800">{crop.growthPeriod}</div>
-                          </div>
-                        </div>
-
-                        {/* Pros & Cons */}
-                        <div className="grid md:grid-cols-2 gap-4 pt-3 border-t border-emerald-100">
-                          <div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <CheckCircle className="w-4 h-4 text-green-600" />
-                              <span className="text-sm font-medium text-gray-700">Pros</span>
-                            </div>
-                            <ul className="space-y-1">
-                              {crop.pros.map((pro, i) => (
-                                <li key={i} className="text-xs text-gray-600 flex items-start gap-1">
-                                  <span className="text-green-600 mt-0.5">•</span>
-                                  {pro}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <AlertCircle className="w-4 h-4 text-orange-600" />
-                              <span className="text-sm font-medium text-gray-700">Cons</span>
-                            </div>
-                            <ul className="space-y-1">
-                              {crop.cons.map((con, i) => (
-                                <li key={i} className="text-xs text-gray-600 flex items-start gap-1">
-                                  <span className="text-orange-600 mt-0.5">•</span>
-                                  {con}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
+                          <p className="text-sm text-gray-700 italic">"{crop.reason}"</p>
                         </div>
                       </div>
                     </div>
@@ -478,47 +446,17 @@ export default function CropRecommendation() {
                   <h2 className="text-xl font-bold text-gray-800">Crop Rotation Advice</h2>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-6">
-                  {[
-                    {
-                      season: 'Current Season (Kharif)',
-                      crop: 'Rice',
-                      reason: 'Ideal for monsoon season with high soil moisture. Replenishes nitrogen in soil.',
-                      icon: Sprout,
-                      bgColor: 'bg-emerald-100',
-                      iconColor: 'text-emerald-600'
-                    },
-                    {
-                      season: 'Next Season (Rabi)',
-                      crop: 'Wheat',
-                      reason: 'Perfect follow-up to rice. Benefits from residual moisture and complements nutrient cycle.',
-                      icon: Wheat,
-                      bgColor: 'bg-amber-100',
-                      iconColor: 'text-amber-600'
-                    },
-                    {
-                      season: 'Future (Zaid)',
-                      crop: 'Legumes',
-                      reason: 'Restore nitrogen levels. Short growing period allows soil recovery before next cycle.',
-                      icon: Sparkles,
-                      bgColor: 'bg-purple-100',
-                      iconColor: 'text-purple-600'
-                    }
-                  ].map((rotation, index) => (
-                    <div
-                      key={index}
-                      className="backdrop-blur-lg bg-white/70 rounded-xl p-6 border border-emerald-100 hover:shadow-lg transition-all"
-                    >
-                      <div className={`inline-flex p-3 rounded-xl ${rotation.bgColor} mb-4`}>
-                        <rotation.icon className={`w-6 h-6 ${rotation.iconColor}`} />
-                      </div>
-                      <h3 className="font-bold text-gray-800 mb-2">{rotation.season}</h3>
-                      <div className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-3">
-                        {rotation.crop}
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">{rotation.reason}</p>
-                    </div>
-                  ))}
+                <div className="p-6 bg-white/80 rounded-xl border border-emerald-100 shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Sparkles className="w-6 h-6 text-emerald-600" />
+                    <span className="font-bold text-gray-800">AI Advice</span>
+                  </div>
+                  <p className="text-gray-700 leading-relaxed">
+                    {results?.rotation_advice}
+                  </p>
+                  <div className="mt-4 text-xs font-mono text-gray-500">
+                    Inference Mode: {results?.inference_mode} | Prediction ID: {results?.prediction_id}
+                  </div>
                 </div>
 
                 {/* Tips */}

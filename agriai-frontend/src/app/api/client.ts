@@ -160,6 +160,28 @@ export interface SoilPredictionRequest {
   };
 }
 
+
+export interface RecommendedCrop {
+  crop_name: string;
+  suitability_score: number;
+  reason: string;
+}
+
+
+export interface CropRecommendationResponse {
+  recommended_crops: RecommendedCrop[];
+  rotation_advice: string;
+  inference_mode: string;
+  prediction_id: string;
+  cached?: boolean;
+}
+
+
+export interface CropRecommendationRequest {
+  soil_report_id?: string;
+  farm_id?: string;
+  season: string;
+  previous_crop?: string;
 export interface FertilizerPredictionResponse {
   fertilizer_type: string;
   dosage_kg_per_hectare: number;
@@ -311,6 +333,11 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  predictCrop: (data: CropRecommendationRequest) =>
+    request<CropRecommendationResponse>("/predict/crop", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   predictFertilizer: (data: FertilizerPredictionRequest) =>
     request<FertilizerPredictionResponse>("/predict/fertilizer", {
       method: "POST",

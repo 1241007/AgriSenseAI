@@ -14,6 +14,9 @@ env/
 # Environment files (keep .env.example)
 .env
 agriai-backend/.env
+agriai-frontend/.env
+.env.local
+.env.*.local
 
 # Pytest / coverage
 .pytest_cache/
@@ -89,14 +92,19 @@ docker-compose.local.yml
 postgres_data/
 redis_data/
 
-# ── IDEs / Editors ────────────────────────────────────────────────────────────
+# IDEs / Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# ── OS ────────────────────────────────────────────────────────────────────────
+# AI Assistant Data
+.gemini/
+.antigravity/
+.claude/
+
+# OS
 .DS_Store
 .DS_Store?
 ._*
