@@ -18,7 +18,9 @@ dependencies = [
     "alembic==1.14.0",
     "email-validator==2.2.0",
     "transformers",
-    "torch"
+    "torch",
+    "Pillow==11.0.0",
+    "python-multipart==0.0.17"
 ]
 
 [tool.hatch.build.targets.wheel]

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Bell,
   Search,
@@ -17,9 +17,11 @@ import {
   Shield,
   Droplets,
   Sparkles,
-  Bug
+  Bug,
+  X
 } from 'lucide-react';
 import Sidebar from './Sidebar';
+import { api } from '../api/client';
 
 interface ScanResult {
   disease: string;
@@ -39,8 +41,14 @@ export default function DiseaseDetection() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanComplete, setScanComplete] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -62,6 +70,8 @@ export default function DiseaseDetection() {
   };
 
   const handleImageUpload = (file: File) => {
+    setImageFile(file);
+    setError(null);
     const reader = new FileReader();
     reader.onload = (e) => {
       setSelectedImage(e.target?.result as string);
@@ -78,58 +88,90 @@ export default function DiseaseDetection() {
     }
   };
 
-  const startScan = () => {
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      setCameraStream(stream);
+      setIsCameraOpen(true);
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      setError("Could not access camera. Please check permissions.");
+    }
+  };
+
+  useEffect(() => {
+    if (isCameraOpen && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [isCameraOpen, cameraStream]);
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setIsCameraOpen(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], "captured_plant.jpg", { type: "image/jpeg" });
+            handleImageUpload(file);
+            stopCamera();
+          }
+        }, 'image/jpeg');
+      }
+    }
+  };
+
+  const startScan = async () => {
+    if (!imageFile) return;
+
     setIsScanning(true);
     setScanComplete(false);
+    setError(null);
 
-    // Simulate AI scanning process
-    setTimeout(() => {
-      setIsScanning(false);
+    try {
+      const formData = new FormData();
+      formData.append('file', imageFile);
+
+      const response = await api.predictDisease(formData);
+
+      setScanResult({
+        disease: response.disease_name,
+        confidence: response.confidence * 100,
+        severity: response.severity as any,
+        status: response.is_healthy ? 'Healthy' : 'Infected',
+        description: `Scientific Name: ${response.scientific_name}. This assessment is based on the visual characteristics detected by our AI model.`,
+        treatments: [
+          `Chemical: ${response.treatment.chemical}`,
+          `Biological: ${response.treatment.biological}`,
+          `Cultural: ${response.treatment.cultural}`
+        ],
+        prevention: [
+          'Maintain regular monitoring',
+          'Practice good crop rotation',
+          'Ensure proper sanitation of tools'
+        ]
+      });
       setScanComplete(true);
-
-      // Mock scan result - in production, this would come from an API
-      const mockResults: ScanResult[] = [
-        {
-          disease: 'Leaf Rust',
-          confidence: 94.5,
-          severity: 'High',
-          status: 'Infected',
-          description: 'Fungal disease causing orange to reddish-brown pustules on leaves, reducing photosynthesis and crop yield.',
-          treatments: [
-            'Apply fungicide containing tebuconazole or propiconazole',
-            'Remove and destroy infected leaves immediately',
-            'Improve air circulation between plants',
-            'Apply treatment every 7-10 days until symptoms improve'
-          ],
-          prevention: [
-            'Plant resistant varieties',
-            'Maintain proper spacing between plants',
-            'Avoid overhead irrigation',
-            'Regular monitoring and early detection'
-          ]
-        },
-        {
-          disease: 'Healthy Leaf',
-          confidence: 98.2,
-          severity: 'Low',
-          status: 'Healthy',
-          description: 'No disease detected. The plant appears to be in excellent health with proper nutrient levels and no visible signs of infection.',
-          treatments: [
-            'Continue current care routine',
-            'Monitor regularly for any changes',
-            'Maintain proper watering schedule'
-          ],
-          prevention: [
-            'Keep current practices',
-            'Regular inspection',
-            'Maintain soil health'
-          ]
-        }
-      ];
-
-      // Randomly select a result for demo purposes
-      setScanResult(mockResults[Math.floor(Math.random() * mockResults.length)]);
-    }, 3500);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to analyze image');
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const getSeverityColor = (severity: string) => {
@@ -243,17 +285,9 @@ export default function DiseaseDetection() {
                         <Upload className="w-5 h-5" />
                         Choose File
                       </button>
-
-                      <input
-                        ref={cameraInputRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
+                      
                       <button
-                        onClick={() => cameraInputRef.current?.click()}
+                        onClick={startCamera}
                         className="px-8 py-4 backdrop-blur-lg bg-white/80 border-2 border-emerald-200 text-emerald-700 rounded-xl hover:bg-white transition-all flex items-center justify-center gap-2"
                       >
                         <Camera className="w-5 h-5" />
@@ -326,6 +360,19 @@ export default function DiseaseDetection() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Error Status */}
+                  {error && (
+                    <div className="backdrop-blur-lg bg-red-50 border border-red-200 rounded-2xl p-6 text-red-700">
+                      <div className="flex items-center gap-4">
+                        <AlertTriangle className="w-8 h-8" />
+                        <div>
+                          <h3 className="text-xl font-bold mb-1">Analysis Failed</h3>
+                          <p>{error}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Scanning Status */}
                   {isScanning && (
@@ -539,6 +586,51 @@ export default function DiseaseDetection() {
           background-size: 20px 20px;
         }
       `}</style>
+
+      {/* Camera Modal */}
+      {isCameraOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+          <div className="relative w-full max-w-2xl bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              className="w-full h-auto aspect-video object-cover"
+            />
+            
+            {/* Camera Overlay UI */}
+            <div className="absolute inset-0 pointer-events-none border-2 border-emerald-500/30 m-8 rounded-2xl">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 mt-4 px-4 py-2 bg-black/50 backdrop-blur-md rounded-full text-white text-sm font-medium flex items-center gap-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                Live Camera
+              </div>
+            </div>
+
+            <div className="absolute bottom-0 left-0 right-0 p-8 flex items-center justify-between gap-4 bg-gradient-to-t from-black/80 to-transparent">
+              <button 
+                onClick={stopCamera}
+                className="p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              
+              <button 
+                onClick={capturePhoto}
+                className="w-20 h-20 bg-white rounded-full p-1 shadow-2xl hover:scale-105 active:scale-95 transition-all"
+              >
+                <div className="w-full h-full border-4 border-gray-900 rounded-full bg-white flex items-center justify-center">
+                  <div className="w-4 h-4 bg-emerald-500 rounded-full"></div>
+                </div>
+              </button>
+              
+              <div className="w-14"></div> {/* Spacer for symmetry */}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden Canvas for capture */}
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }
