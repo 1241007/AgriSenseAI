@@ -80,9 +80,11 @@ export default function SoilAnalysis() {
   });
 
   const [prediction, setPrediction] = useState<SoilPredictionResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
+    setError(null);
     try {
       const res = await api.predictSoil({
         inline_values: {
@@ -94,8 +96,9 @@ export default function SoilAnalysis() {
         }
       });
       setPrediction(res);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Prediction failed:", err);
+      setError(err.message || "Failed to analyze soil. Please try again.");
     } finally {
       setAnalyzing(false);
     }
@@ -594,8 +597,19 @@ export default function SoilAnalysis() {
             <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
               <Lightbulb className="w-5 h-5 text-emerald-600" />
               AI-Generated Recommendations
-              {prediction && <span className="ml-2 text-sm bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">{prediction.soil_type} ({(prediction.confidence * 100).toFixed(1)}% match)</span>}
+              {prediction && (
+                <div className="ml-2 flex gap-2">
+                  <span className="text-sm bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">{prediction.soil_type} ({(prediction.confidence * 100).toFixed(1)}% match)</span>
+                  {prediction.cached && <span className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full flex items-center gap-1"><Zap className="w-3 h-3"/> Cached</span>}
+                </div>
+              )}
             </h3>
+            {error && (
+              <div className="mb-4 p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5" />
+                {error}
+              </div>
+            )}
             <div className="space-y-4">
               {prediction ? (
                 prediction.recommendations.map((rec, idx) => (

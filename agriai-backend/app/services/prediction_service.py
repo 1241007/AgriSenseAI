@@ -47,8 +47,10 @@ async def predict_soil(request: SoilRequest, user_id: UUID, session: AsyncSessio
             "recommendations": prediction_result.recommendations
         }
         await cache_set(cache_key, result_dict)
+        is_cached = False
     else:
         result_dict = cached
+        is_cached = True
     
     # Save to db
     prediction = Prediction(
@@ -66,5 +68,6 @@ async def predict_soil(request: SoilRequest, user_id: UUID, session: AsyncSessio
         confidence=result_dict["confidence"],
         deficiencies=result_dict["deficiencies"],
         recommendations=result_dict["recommendations"],
-        prediction_id=prediction.prediction_id
+        prediction_id=prediction.prediction_id,
+        cached=is_cached
     )

@@ -142,6 +142,7 @@ export interface SoilPredictionResponse {
   deficiencies: string[];
   recommendations: string[];
   prediction_id: string;
+  cached?: boolean;
 }
 
 export interface SoilPredictionRequest {

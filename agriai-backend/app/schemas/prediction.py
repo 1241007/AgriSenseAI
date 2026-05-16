@@ -21,3 +21,4 @@ class SoilResponse(BaseModel):
     deficiencies: list[str]
     recommendations: list[str]
     prediction_id: uuid.UUID
+    cached: bool = False
