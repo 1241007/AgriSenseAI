@@ -9,6 +9,7 @@ import Dashboard from "./components/Dashboard";
 import FarmManagement from "./components/FarmManagement";
 import SoilAnalysis from "./components/SoilAnalysis";
 import CropRecommendation from "./components/CropRecommendation";
+import FertilizerRecommendation from "./components/FertilizerRecommendation";
 import DiseaseDetection from "./components/DiseaseDetection";
 import YieldPrediction from "./components/YieldPrediction";
 import Weather from "./components/Weather";
@@ -47,8 +48,12 @@ export default function App() {
             element={<AuthenticatedLayout><SoilAnalysis /></AuthenticatedLayout>}
           />
           <Route
-            path="/fertilizer"
+            path="/crop-recommendation"
             element={<AuthenticatedLayout><CropRecommendation /></AuthenticatedLayout>}
+          />
+          <Route
+            path="/fertilizer"
+            element={<AuthenticatedLayout><FertilizerRecommendation /></AuthenticatedLayout>}
           />
           <Route
             path="/disease-detection"

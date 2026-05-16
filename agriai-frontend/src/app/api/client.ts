@@ -156,6 +156,30 @@ export interface SoilPredictionRequest {
   };
 }
 
+
+export interface RecommendedCrop {
+  crop_name: string;
+  suitability_score: number;
+  reason: string;
+}
+
+
+export interface CropRecommendationResponse {
+  recommended_crops: RecommendedCrop[];
+  rotation_advice: string;
+  inference_mode: string;
+  prediction_id: string;
+  cached?: boolean;
+}
+
+
+export interface CropRecommendationRequest {
+  soil_report_id?: string;
+  farm_id?: string;
+  season: string;
+  previous_crop?: string;
+}
+
 // ── User types ───────────────────────────────────────────────────────────────
 
 export interface UserResponse {
@@ -264,6 +288,12 @@ export const api = {
 
   predictSoil: (data: SoilPredictionRequest) =>
     request<SoilPredictionResponse>("/predict/soil", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  predictCrop: (data: CropRecommendationRequest) =>
+    request<CropRecommendationResponse>("/predict/crop", {
       method: "POST",
       body: JSON.stringify(data),
     }),

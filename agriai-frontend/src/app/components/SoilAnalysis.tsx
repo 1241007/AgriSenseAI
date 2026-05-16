@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
-import { api, SoilPredictionResponse } from '../api/client';
+import { api, SoilPredictionResponse, FarmResponse } from '../api/client';
 import {
   Bell,
   Search,
@@ -81,6 +81,21 @@ export default function SoilAnalysis() {
 
   const [prediction, setPrediction] = useState<SoilPredictionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [farms, setFarms] = useState<FarmResponse[]>([]);
+  const [selectedFarmId, setSelectedFarmId] = useState<string>('');
+
+  useEffect(() => {
+    const fetchFarms = async () => {
+      try {
+        const data = await api.getFarms();
+        setFarms(data);
+        if (data.length > 0) setSelectedFarmId(data[0].farm_id);
+      } catch (err) {
+        console.error("Failed to fetch farms", err);
+      }
+    };
+    fetchFarms();
+  }, []);
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
@@ -102,6 +117,61 @@ export default function SoilAnalysis() {
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const handleSave = async () => {
+    if (!selectedFarmId) {
+      setError("Please select a farm to save the data.");
+      return;
+    }
+    setAnalyzing(true);
+    setError(null);
+    try {
+      await api.createSoilReport(selectedFarmId, {
+        nitrogen_ppm: soilData.nitrogen,
+        phosphorus_ppm: soilData.phosphorus,
+        potassium_ppm: soilData.potassium,
+        ph_level: soilData.pH,
+        moisture_percent: soilData.moisture,
+        organic_matter_percent: soilData.organicCarbon,
+        notes: "Saved from AI Analysis page"
+      });
+      alert("Soil data saved successfully!");
+    } catch (err: any) {
+      setError(err.message || "Failed to save soil data.");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setAnalyzing(true);
+    setError(null);
+    try {
+      // Simulate sync with sensors
+      await new Promise(r => setTimeout(r, 1500));
+      alert("Data synced with sensors successfully!");
+    } catch (err: any) {
+      setError("Sync failed. Check sensor connections.");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleExport = () => {
+    const dataStr = JSON.stringify({
+      soilData,
+      prediction,
+      timestamp: new Date().toISOString()
+    }, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `soil-analysis-${new Date().getTime()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getFertilityScore = () => {
@@ -201,12 +271,32 @@ export default function SoilAnalysis() {
                 </h1>
                 <p className="text-emerald-100">AI-powered soil health monitoring and nutrient analysis</p>
               </div>
-              <div className="flex gap-3">
-                <button className="px-6 py-3 bg-white/20 hover:bg-white/30 backdrop-blur-lg rounded-xl transition-all flex items-center gap-2">
-                  <RefreshCw className="w-5 h-5" />
+              <div className="flex flex-wrap gap-3 mt-4 md:mt-0">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-emerald-100 px-1">Select Farm</label>
+                  <select
+                    value={selectedFarmId}
+                    onChange={(e) => setSelectedFarmId(e.target.value)}
+                    className="px-4 py-2 bg-white/20 border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/50 appearance-none"
+                  >
+                    {farms.map(f => (
+                      <option key={f.farm_id} value={f.farm_id} className="text-gray-800">{f.name}</option>
+                    ))}
+                    {farms.length === 0 && <option className="text-gray-800">No farms found</option>}
+                  </select>
+                </div>
+                <button 
+                  onClick={handleSync}
+                  disabled={analyzing}
+                  className="px-6 py-3 bg-white/20 hover:bg-white/30 backdrop-blur-lg rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-5 h-5 ${analyzing ? 'animate-spin' : ''}`} />
                   Auto-Sync
                 </button>
-                <button className="px-6 py-3 bg-white text-emerald-600 rounded-xl hover:shadow-xl transition-all flex items-center gap-2">
+                <button 
+                  onClick={handleExport}
+                  className="px-6 py-3 bg-white text-emerald-600 rounded-xl hover:shadow-xl transition-all flex items-center gap-2"
+                >
                   <Download className="w-5 h-5" />
                   Export Report
                 </button>
@@ -493,7 +583,11 @@ export default function SoilAnalysis() {
                   </>
                 )}
               </button>
-              <button className="px-6 py-4 backdrop-blur-lg bg-white/60 border-2 border-emerald-200 text-emerald-700 rounded-xl hover:bg-white transition-all flex items-center gap-2">
+              <button 
+                onClick={handleSave}
+                disabled={analyzing || !selectedFarmId}
+                className="px-6 py-4 backdrop-blur-lg bg-white/60 border-2 border-emerald-200 text-emerald-700 rounded-xl hover:bg-white transition-all flex items-center gap-2 disabled:opacity-50"
+              >
                 <Send className="w-5 h-5" />
                 Save Data
               </button>

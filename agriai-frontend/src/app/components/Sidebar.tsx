@@ -26,7 +26,7 @@ export default function Sidebar({ isOpen, onClose, activeItem, colorScheme = 'em
     { icon: Wheat, label: 'Farms', path: '/farms' },
     { icon: TestTube, label: 'Soil Analysis', path: '/soil-analysis' },
     { icon: Bug, label: 'Disease Detection', path: '/disease-detection' },
-    { icon: Lightbulb, label: 'Crop Recommendation', path: '/fertilizer' },
+    { icon: Lightbulb, label: 'Crop Recommendation', path: '/crop-recommendation' },
     { icon: TrendingUp, label: 'Yield Prediction', path: '/yield-prediction' },
     { icon: CloudRain, label: 'Weather', path: '/weather' },
     { icon: History, label: 'History & Feedback', path: '/history' }

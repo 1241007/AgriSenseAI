@@ -40,7 +40,10 @@ export default function DiseaseDetection() {
   const [scanComplete, setScanComplete] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -75,6 +78,47 @@ export default function DiseaseDetection() {
     const file = e.target.files?.[0];
     if (file) {
       handleImageUpload(file);
+    }
+  };
+
+  const startCamera = async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      setStream(s);
+      setShowCamera(true);
+      // Wait for ref to be available
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = s;
+        }
+      }, 100);
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      alert("Could not access camera. Please check permissions.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setShowCamera(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext('2d');
+      if (context) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        context.drawImage(videoRef.current, 0, 0);
+        const dataUrl = canvasRef.current.toDataURL('image/jpeg');
+        setSelectedImage(dataUrl);
+        stopCamera();
+      }
     }
   };
 
@@ -244,16 +288,8 @@ export default function DiseaseDetection() {
                         Choose File
                       </button>
 
-                      <input
-                        ref={cameraInputRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
                       <button
-                        onClick={() => cameraInputRef.current?.click()}
+                        onClick={startCamera}
                         className="px-8 py-4 backdrop-blur-lg bg-white/80 border-2 border-emerald-200 text-emerald-700 rounded-xl hover:bg-white transition-all flex items-center justify-center gap-2"
                       >
                         <Camera className="w-5 h-5" />
@@ -498,6 +534,41 @@ export default function DiseaseDetection() {
           </div>
         </main>
       </div>
+
+      {/* Live Camera Overlay */}
+      {showCamera && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+          <div className="relative w-full max-w-2xl bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              className="w-full h-auto"
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-6">
+              <button
+                onClick={stopCamera}
+                className="p-4 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-all"
+              >
+                <XCircle className="w-8 h-8" />
+              </button>
+              <button
+                onClick={capturePhoto}
+                className="p-6 bg-white rounded-full text-emerald-600 shadow-xl hover:scale-110 transition-all"
+              >
+                <Camera className="w-8 h-8" />
+              </button>
+            </div>
+            
+            <div className="absolute top-4 left-4 text-white text-sm font-medium bg-black/40 px-3 py-1 rounded-full flex items-center gap-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              Live Camera
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .scanning-line {

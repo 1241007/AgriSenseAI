@@ -18,7 +18,11 @@ dependencies = [
     "alembic==1.14.0",
     "email-validator==2.2.0",
     "transformers",
-    "torch"
+    "torch",
+    "langchain",
+    "langchain-community",
+    "langchain-openai",
+    "langgraph"
 ]
 
 [tool.hatch.build.targets.wheel]
