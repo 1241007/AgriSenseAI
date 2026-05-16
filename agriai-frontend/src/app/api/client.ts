@@ -11,9 +11,13 @@ async function request<T>(
 ): Promise<T> {
   const token = localStorage.getItem("access_token");
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
+  
+  if (!(options.body instanceof FormData) && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
@@ -178,6 +182,43 @@ export interface CropRecommendationRequest {
   farm_id?: string;
   season: string;
   previous_crop?: string;
+export interface FertilizerPredictionResponse {
+  fertilizer_type: string;
+  dosage_kg_per_hectare: number;
+  total_dosage_kg: number;
+  application_method: string;
+  additional_notes: string;
+  confidence: number;
+  cached?: boolean;
+  prediction_id?: string;
+}
+
+export interface FertilizerPredictionRequest {
+  soil_report_id?: string;
+  inline_values?: {
+    nitrogen: number;
+    phosphorus: number;
+    potassium: number;
+    ph: number;
+    moisture: number;
+  };
+  crop_name: string;
+  area_hectares: number;
+}
+
+export interface DiseasePredictionResponse {
+  disease_name: string;
+  scientific_name: string;
+  confidence: number;
+  severity: string;
+  affected_area_pct: number;
+  treatment: {
+    chemical: string;
+    biological: string;
+    cultural: string;
+  };
+  is_healthy: boolean;
+  prediction_id?: string;
 }
 
 // ── User types ───────────────────────────────────────────────────────────────
@@ -296,5 +337,16 @@ export const api = {
     request<CropRecommendationResponse>("/predict/crop", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+  predictFertilizer: (data: FertilizerPredictionRequest) =>
+    request<FertilizerPredictionResponse>("/predict/fertilizer", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  predictDisease: (formData: FormData) =>
+    request<DiseasePredictionResponse>("/predict/disease", {
+      method: "POST",
+      body: formData,
     }),
 };

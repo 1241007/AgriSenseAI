@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
+import { api, SoilReportResponse, FarmResponse } from '../api/client';
 import {
   Sprout,
   LayoutDashboard,
@@ -65,28 +66,11 @@ const npkRatioData = [
   { name: 'Potassium', value: 30, color: '#8b5cf6' }
 ];
 
-const applicationScheduleData = [
-  { week: 'Week 1', dosage: 25 },
-  { week: 'Week 2', dosage: 0 },
-  { week: 'Week 3', dosage: 30 },
-  { week: 'Week 4', dosage: 0 },
-  { week: 'Week 5', dosage: 25 },
-  { week: 'Week 6', dosage: 0 },
-  { week: 'Week 7', dosage: 20 },
-  { week: 'Week 8', dosage: 0 }
-];
-
 const costAnalysisData = [
   { fertilizer: 'Urea', cost: 450, percentage: 35 },
   { fertilizer: 'DAP', cost: 380, percentage: 30 },
   { fertilizer: 'Potash', cost: 320, percentage: 25 },
   { fertilizer: 'Micronutrients', cost: 130, percentage: 10 }
-];
-
-const soilReports = [
-  { id: 1, name: 'Green Valley Farm - May 2026', date: '2026-05-10', status: 'Recent' },
-  { id: 2, name: 'Sunny Acres - Apr 2026', date: '2026-04-22', status: 'Good' },
-  { id: 3, name: 'River Bend - May 2026', date: '2026-05-08', status: 'Recent' }
 ];
 
 const crops = [
@@ -99,6 +83,27 @@ export default function FertilizerRecommendation() {
   const [activeTab, setActiveTab] = useState('Crop Recommendation');
   const [generating, setGenerating] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(false);
+  const [prediction, setPrediction] = useState<any>(null);
+  
+  const [realSoilReports, setRealSoilReports] = useState<(SoilReportResponse & { farm_name: string })[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadReports() {
+      try {
+        const farms = await api.getFarms();
+        let allReports: (SoilReportResponse & { farm_name: string })[] = [];
+        for (const farm of farms) {
+          const reports = await api.getSoilReports(farm.farm_id);
+          allReports = allReports.concat(reports.map(r => ({ ...r, farm_name: farm.name })));
+        }
+        setRealSoilReports(allReports);
+      } catch (err) {
+        console.error("Failed to load reports", err);
+      }
+    }
+    loadReports();
+  }, []);
 
   const [formData, setFormData] = useState({
     soilReport: '',
@@ -120,12 +125,23 @@ export default function FertilizerRecommendation() {
     { icon: Settings, label: 'Settings' }
   ];
 
-  const handleGenerateRecommendation = () => {
-    setGenerating(true);
-    setTimeout(() => {
-      setGenerating(false);
+  const handleGenerateRecommendation = async () => {
+    try {
+      setError(null);
+      setGenerating(true);
+      const res = await api.predictFertilizer({
+        soil_report_id: formData.soilReport,
+        crop_name: formData.crop,
+        area_hectares: Number(formData.area),
+      });
+      setPrediction(res);
       setShowRecommendations(true);
-    }, 2500);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to generate recommendation");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -274,9 +290,9 @@ export default function FertilizerRecommendation() {
                   className="w-full px-4 py-3 bg-white/70 border-2 border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Choose a report...</option>
-                  {soilReports.map((report) => (
-                    <option key={report.id} value={report.id}>
-                      {report.name}
+                  {realSoilReports.map((report) => (
+                    <option key={report.report_id} value={report.report_id}>
+                      {report.farm_name} - {new Date(report.reported_at).toLocaleDateString()}
                     </option>
                   ))}
                 </select>
@@ -370,23 +386,28 @@ export default function FertilizerRecommendation() {
                     <p className="text-blue-100 mb-4">
                       Based on your soil analysis for {formData.crop} cultivation on {formData.area} hectares,
                       our AI has generated a customized fertilizer plan optimized for maximum yield and soil health.
+                      {prediction?.cached && (
+                        <span className="block mt-2 text-blue-200 text-sm">
+                          (Served from cache)
+                        </span>
+                      )}
                     </p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="backdrop-blur-lg bg-white/10 rounded-xl p-3">
-                        <div className="text-2xl font-bold">NPK 20:10:10</div>
-                        <div className="text-xs text-blue-100">Recommended Ratio</div>
+                        <div className="text-2xl font-bold">{prediction?.fertilizer_type || 'Custom'}</div>
+                        <div className="text-xs text-blue-100">Recommended Type</div>
                       </div>
                       <div className="backdrop-blur-lg bg-white/10 rounded-xl p-3">
-                        <div className="text-2xl font-bold">125 kg</div>
+                        <div className="text-2xl font-bold">{prediction?.total_dosage_kg || 0} kg</div>
                         <div className="text-xs text-blue-100">Total Dosage</div>
                       </div>
                       <div className="backdrop-blur-lg bg-white/10 rounded-xl p-3">
-                        <div className="text-2xl font-bold">$1,280</div>
-                        <div className="text-xs text-blue-100">Estimated Cost</div>
+                        <div className="text-2xl font-bold">{prediction?.dosage_kg_per_hectare || 0} kg/ha</div>
+                        <div className="text-xs text-blue-100">Dosage per Hectare</div>
                       </div>
                       <div className="backdrop-blur-lg bg-white/10 rounded-xl p-3">
-                        <div className="text-2xl font-bold">8 weeks</div>
-                        <div className="text-xs text-blue-100">Application Period</div>
+                        <div className="text-2xl font-bold">{((prediction?.confidence || 0) * 100).toFixed(1)}%</div>
+                        <div className="text-xs text-blue-100">AI Confidence</div>
                       </div>
                     </div>
                   </div>
@@ -395,35 +416,17 @@ export default function FertilizerRecommendation() {
 
               {/* Fertilizer Recommendations Grid */}
               <div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-6">Recommended Fertilizers</h3>
+                <h3 className="text-2xl font-bold text-gray-800 mb-6">Recommended Fertilizer Application</h3>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[
                     {
-                      name: 'Urea (46-0-0)',
-                      type: 'Nitrogen Source',
-                      dosage: '50 kg/ha',
-                      method: 'Broadcast & Incorporate',
-                      timing: 'Week 1, 3, 5',
+                      name: prediction?.fertilizer_type || 'Fertilizer',
+                      type: 'Primary Source',
+                      dosage: `${prediction?.dosage_kg_per_hectare} kg/ha`,
+                      method: prediction?.application_method,
+                      timing: 'As per crop stage',
                       icon: Package,
                       gradient: 'from-emerald-500 to-green-500'
-                    },
-                    {
-                      name: 'DAP (18-46-0)',
-                      type: 'Phosphorus Source',
-                      dosage: '40 kg/ha',
-                      method: 'Drill Application',
-                      timing: 'Week 1, 4',
-                      icon: Beaker,
-                      gradient: 'from-blue-500 to-indigo-500'
-                    },
-                    {
-                      name: 'Potash (0-0-60)',
-                      type: 'Potassium Source',
-                      dosage: '35 kg/ha',
-                      method: 'Split Application',
-                      timing: 'Week 1, 3, 6',
-                      icon: Zap,
-                      gradient: 'from-violet-500 to-purple-500'
                     }
                   ].map((fertilizer, idx) => (
                     <div
@@ -607,33 +610,9 @@ export default function FertilizerRecommendation() {
                   {[
                     {
                       type: 'success',
-                      title: 'Optimal Timing Detected',
-                      note: 'Based on current weather patterns and soil temperature (24°C), this is an excellent time to begin fertilization. Soil moisture at 65% is ideal for nutrient absorption.',
+                      title: 'Prediction Result',
+                      note: prediction?.additional_notes || 'Follow standard practices for the recommended fertilizer.',
                       priority: 'High'
-                    },
-                    {
-                      type: 'info',
-                      title: 'Split Application Recommended',
-                      note: 'For maximum efficiency, apply nitrogen in 3 split doses during vegetative stage. This reduces leaching losses by up to 35% and improves nutrient use efficiency.',
-                      priority: 'Medium'
-                    },
-                    {
-                      type: 'warning',
-                      title: 'Micronutrient Consideration',
-                      note: 'Soil analysis shows borderline zinc levels. Consider adding 5 kg/ha of zinc sulfate to prevent deficiency during critical growth stages.',
-                      priority: 'Medium'
-                    },
-                    {
-                      type: 'info',
-                      title: 'Application Timing Tips',
-                      note: 'Apply fertilizers early morning or late evening to minimize volatilization losses. Avoid application before heavy rainfall (>25mm predicted).',
-                      priority: 'Low'
-                    },
-                    {
-                      type: 'success',
-                      title: 'Cost Optimization',
-                      note: 'By using this AI-recommended plan instead of traditional methods, you are saving approximately $420 while maintaining optimal nutrient levels.',
-                      priority: 'Low'
                     }
                   ].map((rec, idx) => (
                     <div

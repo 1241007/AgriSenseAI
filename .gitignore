@@ -44,9 +44,10 @@ pip-wheel-metadata/
 # Jupyter
 .ipynb_checkpoints/
 
-# ML model cache (HuggingFace)
-models/
-artifacts/
+# ML model cache (HuggingFace/Large weights)
+/models/
+/agriai-backend/artifacts/
+/agriai-frontend/artifacts/
 *.joblib
 *.pkl
 *.pt
