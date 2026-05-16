@@ -1,28 +1,121 @@
-# Python / Backend
+# ── Python / Backend ──────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyd
+
+# Virtual environments
 venv/
 env/
 .venv/
-.env
-.pytest_cache/
-alembic.ini
+.env/
 
-# Node.js / Frontend
-node_modules/
+# Environment files (keep .env.example)
+.env
+agriai-backend/.env
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
+# Mypy / type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Distribution / packaging
 dist/
 build/
-.next/
-out/
-npm-debug.log*
+*.egg-info/
+*.egg
+.eggs/
 
-# IDEs / OS
+# Hatch / pip
+.hatch/
+pip-wheel-metadata/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ML model cache (HuggingFace)
+models/
+*.joblib
+*.pkl
+*.pt
+*.pth
+*.bin
+.cache/huggingface/
+
+# ── Node.js / Frontend ────────────────────────────────────────────────────────
+node_modules/
+agriai-frontend/node_modules/
+
+# Build output
+agriai-frontend/dist/
+agriai-frontend/build/
+agriai-frontend/.next/
+agriai-frontend/out/
+
+# Vite cache
+agriai-frontend/.vite/
+
+# pnpm
+pnpm-debug.log*
+
+# npm / yarn logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# TypeScript build info
+*.tsbuildinfo
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# Keep docker-compose.yml tracked; ignore local overrides
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Docker volumes (if mounted locally)
+postgres_data/
+redis_data/
+
+# ── IDEs / Editors ────────────────────────────────────────────────────────────
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# Other
+# ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
+logs/
 
+# ── Alembic ───────────────────────────────────────────────────────────────────
+# Keep alembic.ini tracked (no secrets in it)
+# Ignore any local alembic overrides
+alembic_local.ini
+
+# ── Secrets / Keys ────────────────────────────────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/

@@ -6,6 +6,9 @@ from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 
 from app.api.v1.auth import router as auth_router
+from app.api.v1.farms import router as farms_router
+from app.api.v1.soil_reports import router as soil_reports_router
+from app.api.v1.crop_history import router as crop_history_router
 from app.config import settings
 from app.state import set_redis_client
 from app.utils.errors import ApiError, api_error_handler
@@ -46,6 +49,9 @@ async def generic_handler(request: Request, exc: Exception) -> JSONResponse:
 
 # Routers
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(farms_router, prefix="/api/v1")
+app.include_router(soil_reports_router, prefix="/api/v1")
+app.include_router(crop_history_router, prefix="/api/v1")
 
 
 @app.get("/health")
