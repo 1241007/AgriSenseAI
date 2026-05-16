@@ -12,6 +12,8 @@ import app.db.models.user  # noqa: F401
 import app.db.models.farm  # noqa: F401
 import app.db.models.soil_report  # noqa: F401
 import app.db.models.crop_history  # noqa: F401
+import app.db.models.prediction  # noqa: F401
+import app.db.models.feedback  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

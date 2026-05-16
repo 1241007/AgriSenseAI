@@ -1,9 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  Bell,
-  Search,
   User,
-  ChevronDown,
   Menu,
   Upload,
   Camera,
@@ -22,6 +19,7 @@ import {
 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { api } from '../api/client';
+import { toast } from 'sonner';
 
 interface ScanResult {
   disease: string;
@@ -87,33 +85,18 @@ export default function DiseaseDetection() {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
-      });
-      setCameraStream(stream);
-      setIsCameraOpen(true);
-      setError(null);
       const s = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: 'environment' } 
       });
       setStream(s);
       setIsCameraOpen(true);
+      setError(null);
     } catch (err) {
       console.error("Error accessing camera:", err);
-      setError("Could not access camera. Please check permissions.");
+      toast.error("Could not access camera");
     }
   };
 
-  useEffect(() => {
-    if (isCameraOpen && cameraStream && videoRef.current) {
-      videoRef.current.srcObject = cameraStream;
-    }
-  }, [isCameraOpen, cameraStream]);
-
-  const stopCamera = () => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
-      setCameraStream(null);
   const stopCamera = () => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
@@ -173,9 +156,11 @@ export default function DiseaseDetection() {
         ]
       });
       setScanComplete(true);
+      toast.success('Analysis complete!');
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to analyze image');
+      toast.error('Analysis failed');
     } finally {
       setIsScanning(false);
     }
@@ -200,42 +185,12 @@ export default function DiseaseDetection() {
         colorScheme="emerald"
       />
 
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       <div className="lg:ml-64">
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100">
-          <div className="px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden p-2 hover:bg-emerald-50 rounded-lg transition-colors"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-800">AI Disease Detection</h1>
-                  <p className="text-sm text-gray-600">Identify plant diseases using advanced AI</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-lg bg-white/60 rounded-lg border border-emerald-100">
-                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <div className="text-sm font-medium text-gray-800">John Farmer</div>
-                    <div className="text-xs text-gray-600">Premium Plan</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100 p-4">
+          <div className="flex items-center justify-between">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2"><Menu /></button>
+            <h1 className="text-xl font-bold text-gray-800">Disease Detection</h1>
+            <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white"><User /></div>
           </div>
         </header>
 
@@ -248,14 +203,12 @@ export default function DiseaseDetection() {
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   className={`backdrop-blur-lg bg-white/60 rounded-3xl p-8 border-2 border-dashed transition-all ${
-                    isDragging
-                      ? 'border-emerald-500 bg-emerald-50/50 scale-[1.02]'
-                      : 'border-emerald-300'
+                    isDragging ? 'border-emerald-500 bg-emerald-50/50' : 'border-emerald-300'
                   }`}
                 >
                   <div className="text-center space-y-6">
-                    <div className="inline-flex p-6 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100">
-                      <FileImage className="w-16 h-16 text-emerald-600" />
+                    <div className="inline-flex p-6 rounded-full bg-emerald-100 text-emerald-600">
+                      <FileImage className="w-16 h-16" />
                     </div>
                     <div>
                       <h3 className="text-2xl font-bold text-gray-800 mb-2">Upload Plant Image</h3>
@@ -272,36 +225,27 @@ export default function DiseaseDetection() {
                       />
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                        className="px-8 py-4 bg-emerald-600 text-white rounded-xl hover:shadow-xl transition-all flex items-center justify-center gap-2"
                       >
-                        <Upload className="w-5 h-5" />
-                        Choose File
+                        <Upload className="w-5 h-5" /> Choose File
                       </button>
                       <button
                         onClick={startCamera}
-                        className="px-8 py-4 backdrop-blur-lg bg-white/80 border-2 border-emerald-200 text-emerald-700 rounded-xl hover:bg-white transition-all flex items-center justify-center gap-2"
+                        className="px-8 py-4 bg-white border-2 border-emerald-200 text-emerald-700 rounded-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
                       >
-                        <Camera className="w-5 h-5" />
-                        Use Camera
+                        <Camera className="w-5 h-5" /> Use Camera
                       </button>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="backdrop-blur-lg bg-white/60 rounded-3xl p-6 border border-emerald-100">
-                    <div className="relative rounded-2xl overflow-hidden bg-gray-900">
-                      <img
-                        src={selectedImage}
-                        alt="Plant leaf preview"
-                        className="w-full h-auto"
-                      />
+                  <div className="backdrop-blur-lg bg-white/60 rounded-3xl p-6 border border-emerald-100 shadow-sm overflow-hidden">
+                    <div className="relative rounded-2xl overflow-hidden bg-gray-900 group">
+                      <img src={selectedImage} alt="Plant preview" className="w-full h-auto" />
                       {isScanning && (
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-emerald-500/20 to-transparent">
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="absolute w-full h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse"></div>
-                            <div className="scanning-line"></div>
-                          </div>
+                        <div className="absolute inset-0 bg-emerald-500/10 backdrop-blur-[2px]">
+                          <div className="scanning-line" />
                         </div>
                       )}
                     </div>
@@ -310,10 +254,9 @@ export default function DiseaseDetection() {
                       {!isScanning && !scanComplete && (
                         <button
                           onClick={startScan}
-                          className="flex-1 px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                          className="flex-1 px-6 py-4 bg-emerald-600 text-white rounded-xl hover:shadow-xl transition-all flex items-center justify-center gap-2 font-bold"
                         >
-                          <Scan className="w-5 h-5" />
-                          Start AI Scan
+                          <Scan className="w-5 h-5" /> Start AI Scan
                         </button>
                       )}
                       <button
@@ -323,64 +266,28 @@ export default function DiseaseDetection() {
                           setScanResult(null);
                           setIsScanning(false);
                         }}
-                        className="px-6 py-4 backdrop-blur-lg bg-white/80 border-2 border-emerald-200 text-emerald-700 rounded-xl hover:bg-white transition-all"
+                        className="px-6 py-4 bg-white border border-emerald-200 text-emerald-700 rounded-xl hover:bg-emerald-50 transition-all"
                       >
                         Reset
                       </button>
                     </div>
                   </div>
-
-                  {error && (
-                    <div className="backdrop-blur-lg bg-red-50 border border-red-200 rounded-2xl p-6 text-red-700">
-                      <div className="flex items-center gap-4">
-                        <AlertTriangle className="w-8 h-8" />
-                        <div>
-                          <h3 className="text-xl font-bold mb-1">Analysis Failed</h3>
-                          <p>{error}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {isScanning && (
-                    <div className="backdrop-blur-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 text-white">
-                      <div className="flex items-center gap-4">
-                        <Loader className="w-8 h-8 animate-spin" />
-                        <div>
-                          <h3 className="text-xl font-bold mb-1">AI Analysis in Progress</h3>
-                          <p className="text-emerald-100">Processing image and detecting diseases...</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-4 border border-emerald-100">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-emerald-100">
-                      <Sparkles className="w-5 h-5 text-emerald-600" />
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { icon: Sparkles, label: 'AI Powered', color: 'text-emerald-600', bg: 'bg-emerald-100' },
+                  { icon: Zap, label: 'Instant', color: 'text-blue-600', bg: 'bg-blue-100' },
+                  { icon: Shield, label: 'Secure', color: 'text-violet-600', bg: 'bg-violet-100' }
+                ].map((item, i) => (
+                  <div key={i} className="backdrop-blur-lg bg-white/60 rounded-2xl p-4 border border-emerald-100 text-center">
+                    <div className={`p-2 rounded-lg ${item.bg} inline-block mb-2`}>
+                      <item.icon className={`w-5 h-5 ${item.color}`} />
                     </div>
-                    <span className="text-sm font-medium text-gray-700">AI Powered</span>
+                    <div className="text-xs font-bold text-gray-700">{item.label}</div>
                   </div>
-                </div>
-                <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-4 border border-emerald-100">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-blue-100">
-                      <Zap className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <span className="text-sm font-medium text-gray-700">Instant</span>
-                  </div>
-                </div>
-                <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-4 border border-emerald-100">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-violet-100">
-                      <Shield className="w-5 h-5 text-violet-600" />
-                    </div>
-                    <span className="text-sm font-medium text-gray-700">Accurate</span>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
@@ -388,10 +295,8 @@ export default function DiseaseDetection() {
               {scanComplete && scanResult ? (
                 <>
                   <div className={`backdrop-blur-lg bg-gradient-to-br ${
-                    scanResult.status === 'Healthy'
-                      ? 'from-emerald-600 to-green-600'
-                      : 'from-red-600 to-rose-600'
-                  } rounded-3xl p-8 text-white`}>
+                    scanResult.status === 'Healthy' ? 'from-emerald-600 to-green-600' : 'from-red-600 to-rose-600'
+                  } rounded-3xl p-8 text-white shadow-xl`}>
                     <div className="flex items-start justify-between mb-6">
                       <div>
                         <div className="flex items-center gap-3 mb-2">
@@ -402,56 +307,50 @@ export default function DiseaseDetection() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm opacity-90">Confidence Score</span>
-                        <span className="text-2xl font-bold">{Math.round(scanResult.confidence)}%</span>
+                      <div className="flex justify-between items-center text-sm">
+                        <span>Confidence Score</span>
+                        <span className="font-bold">{Math.round(scanResult.confidence)}%</span>
                       </div>
-                      <div className="bg-white/20 rounded-full h-3 overflow-hidden">
-                        <div
-                          className="h-full bg-white rounded-full transition-all duration-1000"
-                          style={{ width: `${scanResult.confidence}%` }}
-                        ></div>
+                      <div className="bg-white/20 rounded-full h-2 overflow-hidden">
+                        <div className="h-full bg-white transition-all duration-1000" style={{ width: `${scanResult.confidence}%` }} />
                       </div>
                     </div>
                   </div>
 
-                  <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">Severity Level</h3>
+                  <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Severity Level</h3>
                     <div className={`w-full h-12 rounded-xl bg-gradient-to-r ${getSeverityColor(scanResult.severity)} flex items-center justify-center text-white font-bold`}>
                       {scanResult.severity}
                     </div>
                   </div>
 
-                  <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">Description</h3>
-                    <p className="text-gray-700 leading-relaxed">{scanResult.description}</p>
+                  <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-800 mb-2">Description</h3>
+                    <p className="text-sm text-gray-700 leading-relaxed">{scanResult.description}</p>
                   </div>
 
-                  <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                      <Droplets className="w-6 h-6 text-emerald-600" />
-                      Treatment Recommendations
+                  <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      <Droplets className="w-5 h-5 text-emerald-600" /> Treatment Guide
                     </h3>
-                    <ul className="space-y-3">
-                      {scanResult.treatments.map((treatment, index) => (
-                        <li key={index} className="flex gap-3">
-                          <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
-                            {index + 1}
-                          </div>
-                          <p className="text-gray-700">{treatment}</p>
-                        </li>
+                    <div className="space-y-4">
+                      {scanResult.treatments.map((t, i) => (
+                        <div key={i} className="flex gap-3 text-sm">
+                          <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold flex-shrink-0">{i+1}</div>
+                          <p className="text-gray-700">{t}</p>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 </>
               ) : (
-                <div className="backdrop-blur-lg bg-white/60 rounded-3xl p-12 border border-emerald-100 text-center">
-                  <div className="inline-flex p-6 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 mb-6">
-                    <Bug className="w-16 h-16 text-emerald-600" />
+                <div className="backdrop-blur-lg bg-white/60 rounded-3xl p-12 border border-emerald-100 text-center shadow-sm h-full flex flex-col justify-center">
+                  <div className="inline-flex p-6 rounded-full bg-emerald-100 text-emerald-600 mb-6 mx-auto">
+                    <Bug className="w-16 h-16" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-800 mb-3">Upload an Image</h3>
-                  <p className="text-gray-600 max-w-md mx-auto">
-                    Get instant diagnosis and treatment recommendations for plant diseases.
+                  <h3 className="text-2xl font-bold text-gray-800 mb-3">Instant Diagnosis</h3>
+                  <p className="text-gray-600 max-w-sm mx-auto">
+                    Upload or snap a photo of a plant leaf to detect diseases and get treatment advice instantly.
                   </p>
                 </div>
               )}
@@ -461,108 +360,23 @@ export default function DiseaseDetection() {
       </div>
 
       {isCameraOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
           <div className="relative w-full max-w-2xl bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
             <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              className="w-full h-auto aspect-video object-cover"
-            />
-            <div className="absolute bottom-0 left-0 right-0 p-8 flex items-center justify-between gap-4 bg-gradient-to-t from-black/80 to-transparent">
-              <button 
-                onClick={stopCamera}
-                className="p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all"
-              >
-                <X className="w-6 h-6" />
-              </button>
-              <button 
-                onClick={capturePhoto}
-                className="w-20 h-20 bg-white rounded-full p-1 shadow-2xl hover:scale-105 active:scale-95 transition-all"
-              >
-                <div className="w-full h-full border-4 border-gray-900 rounded-full bg-white flex items-center justify-center">
-                  <div className="w-4 h-4 bg-emerald-500 rounded-full"></div>
-                </div>
-              </button>
-              <div className="w-14"></div>
-      {/* Live Camera Overlay */}
-      {isCameraOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="relative w-full max-w-2xl bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
-            <video
               ref={(el) => {
                 if (el && stream) el.srcObject = stream;
                 videoRef.current = el;
               }}
-              autoPlay
-              playsInline
-              className="w-full h-auto"
+              autoPlay playsInline className="w-full h-auto" 
             />
-            
             <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-6">
-              <button
-                onClick={stopCamera}
-                className="p-4 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-all"
-              >
-                <XCircle className="w-8 h-8" />
-              </button>
-              <button
-                onClick={capturePhoto}
-                className="p-6 bg-white rounded-full text-emerald-600 shadow-xl hover:scale-110 transition-all"
-              >
-                <Camera className="w-8 h-8" />
-              </button>
+              <button onClick={stopCamera} className="p-4 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all"><X /></button>
+              <button onClick={capturePhoto} className="p-6 bg-white rounded-full text-emerald-600 shadow-xl hover:scale-110 transition-all"><Camera className="w-8 h-8" /></button>
             </div>
-            
-            <div className="absolute top-4 left-4 text-white text-sm font-medium bg-black/40 px-3 py-1 rounded-full flex items-center gap-2">
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              Live Camera
-            </div>
+            <div className="absolute top-4 left-4 text-white text-xs font-bold bg-red-500/80 px-3 py-1 rounded-full animate-pulse">LIVE</div>
           </div>
         </div>
       )}
-
-      <style>{`
-        .scanning-line {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 4px;
-          background: linear-gradient(90deg, transparent, #10b981, transparent);
-          animation: scan 2s linear infinite;
-        }
-
-        @keyframes scan {
-          0% {
-            transform: translateY(0);
-          }
-          100% {
-            transform: translateY(500px);
-          }
-        }
-
-        @keyframes progress {
-          0% {
-            width: 0%;
-          }
-          100% {
-            width: 100%;
-          }
-        }
-
-        .animate-progress {
-          animation: progress 3s ease-in-out;
-        }
-
-        .bg-grid-pattern {
-          background-image:
-            linear-gradient(rgba(16, 185, 129, 0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(16, 185, 129, 0.1) 1px, transparent 1px);
-          background-size: 20px 20px;
-        }
-      `}</style>
-
 
       <canvas ref={canvasRef} className="hidden" />
 
@@ -578,7 +392,7 @@ export default function DiseaseDetection() {
         }
         @keyframes scan {
           0% { transform: translateY(0); }
-          100% { transform: translateY(300px); }
+          100% { transform: translateY(400px); }
         }
       `}</style>
     </div>

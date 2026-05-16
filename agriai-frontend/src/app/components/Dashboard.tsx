@@ -20,7 +20,9 @@ import {
   Lightbulb,
   TrendingUp,
   Bug,
-  Loader2
+  Loader2,
+  Activity,
+  Target
 } from 'lucide-react';
 import { Link } from 'react-router';
 import Sidebar from './Sidebar';
@@ -39,7 +41,8 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
-import { api, FarmResponse, WeatherResponse } from '../api/client';
+import { api, FarmResponse, WeatherResponse, DashboardSummary, PredictionHistoryResponse } from '../api/client';
+import { toast } from 'sonner';
 
 const yieldData = [
   { month: 'Jan', yield: 65 },
@@ -57,22 +60,15 @@ const cropData = [
   { name: 'Soybean', value: 18, color: '#8b5cf6' }
 ];
 
-const healthData = [
-  { day: 'Mon', health: 88 },
-  { day: 'Tue', health: 90 },
-  { day: 'Wed', health: 85 },
-  { day: 'Thu', health: 92 },
-  { day: 'Fri', health: 95 },
-  { day: 'Sat', health: 93 },
-  { day: 'Sun', health: 94 }
-];
-
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [farms, setFarms] = useState<FarmResponse[]>([]);
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [recentPredictions, setRecentPredictions] = useState<PredictionHistoryResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [weatherLoading, setWeatherLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     fetchInitialData();
@@ -80,14 +76,25 @@ export default function Dashboard() {
 
   const fetchInitialData = async () => {
     try {
-      const farmsData = await api.getFarms();
+      setLoading(true);
+      const [farmsData, summaryData, historyData, userData] = await Promise.all([
+        api.getFarms(),
+        api.getDashboardSummary(),
+        api.getPredictionHistory({ limit: 5 }),
+        api.me()
+      ]);
+      
       setFarms(farmsData);
+      setSummary(summaryData);
+      setRecentPredictions(historyData);
+      setUser(userData);
       
       if (farmsData.length > 0) {
         fetchWeather(farmsData[0].farm_id);
       }
     } catch (err) {
       console.error('Failed to load dashboard data', err);
+      toast.error('Failed to sync dashboard data');
     } finally {
       setLoading(false);
     }
@@ -108,7 +115,10 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-emerald-50">
-        <Loader2 className="w-12 h-12 text-emerald-600 animate-spin" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-12 h-12 text-emerald-600 animate-spin" />
+          <p className="text-emerald-800 font-medium animate-pulse">Growing your dashboard...</p>
+        </div>
       </div>
     );
   }
@@ -122,24 +132,12 @@ export default function Dashboard() {
         colorScheme="emerald"
       />
 
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       <div className="lg:ml-64">
         <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100">
           <div className="px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden p-2 hover:bg-emerald-50 rounded-lg transition-colors"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
+              <div className="flex items-center gap-4 flex-1">
+                <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2"><Menu className="w-6 h-6" /></button>
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -149,16 +147,13 @@ export default function Dashboard() {
                   />
                 </div>
               </div>
-
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-lg bg-white/60 rounded-lg border border-emerald-100">
-                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <div className="text-sm font-medium text-gray-800">John Farmer</div>
-                    <div className="text-xs text-gray-600">Premium Plan</div>
-                  </div>
+              <div className="flex items-center gap-3 px-4 py-2 bg-white/60 rounded-lg border border-emerald-100">
+                <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
+                  <User className="w-5 h-5" />
+                </div>
+                <div className="hidden sm:block">
+                  <div className="text-sm font-bold text-gray-800">{user?.full_name || 'Farmer'}</div>
+                  <div className="text-xs text-emerald-600 font-medium">Verified User</div>
                 </div>
               </div>
             </div>
@@ -166,15 +161,17 @@ export default function Dashboard() {
         </header>
 
         <main className="p-4 sm:p-6 lg:p-8 space-y-6">
-          <div className="backdrop-blur-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-6 sm:p-8 text-white shadow-lg">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="backdrop-blur-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+              <Sprout className="w-32 h-32 rotate-12" />
+            </div>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
               <div>
-                <h1 className="text-3xl font-bold mb-2">Welcome back, John! 👋</h1>
-                <p className="text-emerald-100">Here's what's happening with your {farms.length} farms today.</p>
+                <h1 className="text-3xl font-bold mb-2 capitalize">Welcome back, {user?.full_name.split(' ')[0]}! 👋</h1>
+                <p className="text-emerald-100">Manage your {summary?.total_farms || 0} farms and monitor AI insights.</p>
               </div>
-              <Link to="/soil-analysis" className="px-6 py-3 bg-white text-emerald-600 rounded-xl hover:shadow-xl transition-all flex items-center gap-2 font-medium">
-                <Zap className="w-5 h-5" />
-                Quick Scan
+              <Link to="/soil-analysis" className="px-6 py-3 bg-white text-emerald-600 rounded-xl hover:shadow-xl transition-all flex items-center gap-2 font-bold">
+                <Zap className="w-5 h-5" /> Quick Scan
               </Link>
             </div>
           </div>
@@ -183,43 +180,36 @@ export default function Dashboard() {
             {[
               {
                 title: 'Total Farms',
-                value: farms.length.toString(),
-                change: '+2 this month',
+                value: summary?.total_farms.toString() || '0',
+                change: `${summary?.total_area_hectares.toFixed(1)} Total Hectares`,
                 icon: Wheat,
                 gradient: 'from-emerald-500 to-green-500',
-                trend: 'up'
               },
               {
-                title: 'Avg Crop Health',
-                value: '94%',
-                change: '+5% vs last week',
-                icon: Sprout,
+                title: 'AI Accuracy',
+                value: `${summary?.weighted_accuracy_pct || 0}%`,
+                change: `Based on ${summary?.total_feedback || 0} feedback`,
+                icon: Target,
                 gradient: 'from-teal-500 to-cyan-500',
-                trend: 'up'
               },
               {
-                title: 'Predicted Yield',
-                value: '2,847',
-                change: 'tons this season',
+                title: 'Predictions',
+                value: summary?.predictions_this_month.toString() || '0',
+                change: 'This month',
                 icon: TrendingUp,
                 gradient: 'from-blue-500 to-indigo-500',
-                trend: 'up'
               },
               {
-                title: 'Active Alerts',
-                value: '3',
-                change: 'Requires attention',
-                icon: AlertCircle,
+                title: 'Correct Hits',
+                value: summary?.correct_count.toString() || '0',
+                change: 'High confidence predictions',
+                icon: CheckCircle,
                 gradient: 'from-amber-500 to-orange-500',
-                trend: 'neutral'
               }
             ].map((card, index) => (
-              <div
-                key={index}
-                className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 hover:shadow-xl transition-all group shadow-sm"
-              >
+              <div key={index} className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 hover:shadow-xl transition-all group shadow-sm">
                 <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${card.gradient} group-hover:scale-110 transition-transform`}>
+                  <div className={`p-3 rounded-xl bg-gradient-to-br ${card.gradient} group-hover:scale-110 transition-transform shadow-lg`}>
                     <card.icon className="w-6 h-6 text-white" />
                   </div>
                 </div>
@@ -232,82 +222,18 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">Yield Trend (Tons/Acre)</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={yieldData}>
-                  <defs>
-                    <linearGradient id="yieldGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                  <XAxis dataKey="month" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      border: '1px solid #d1fae5',
-                      borderRadius: '12px'
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="yield"
-                    stroke="#10b981"
-                    strokeWidth={3}
-                    fill="url(#yieldGradient)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">Crop Distribution</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={cropData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {cropData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      border: '1px solid #d1fae5',
-                      borderRadius: '12px'
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm flex flex-col">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-800">Weather</h3>
-                <Link to="/weather" className="text-emerald-600 hover:text-emerald-700 text-sm font-medium flex items-center gap-1">
-                  Details
-                  <TrendingUp className="w-4 h-4" />
+                <h3 className="text-xl font-bold text-gray-800">Local Weather</h3>
+                <Link to="/weather" className="text-emerald-600 hover:text-emerald-700 text-sm font-bold flex items-center gap-1">
+                  Details <CloudRain className="w-4 h-4" />
                 </Link>
               </div>
 
               {weatherLoading ? (
                 <div className="flex-1 flex flex-col items-center justify-center gap-3 py-10">
                   <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-                  <p className="text-sm text-gray-500">Loading forecast...</p>
                 </div>
               ) : weather ? (
                 <div className="space-y-6 flex-1">
@@ -318,8 +244,7 @@ export default function Dashboard() {
                     <div className="text-5xl font-bold text-gray-800 mb-1">{Math.round(weather.current_temp || 0)}°C</div>
                     <div className="text-gray-600 font-medium capitalize">{weather.summary}</div>
                     <div className="flex items-center justify-center gap-1 text-sm text-gray-500 mt-2">
-                      <MapPin className="w-3 h-3" />
-                      {farms[0]?.name || 'Unknown'}
+                      <MapPin className="w-3 h-3" /> {weather.location}
                     </div>
                   </div>
 
@@ -331,8 +256,8 @@ export default function Dashboard() {
                     </div>
                     <div className="text-center">
                       <Wind className="w-5 h-5 text-teal-500 mx-auto mb-1" />
-                      <div className="text-sm font-bold text-gray-800">12km/h</div>
-                      <div className="text-xs text-gray-500">Wind</div>
+                      <div className="text-sm font-bold text-gray-800">Windy</div>
+                      <div className="text-xs text-gray-500">Condition</div>
                     </div>
                     <div className="text-center">
                       <Thermometer className="w-5 h-5 text-orange-500 mx-auto mb-1" />
@@ -350,133 +275,38 @@ export default function Dashboard() {
             </div>
 
             <div className="lg:col-span-2 backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-emerald-600" />
-                AI Insights & Recommendations
-              </h3>
-
-              <div className="space-y-4">
-                {[
-                  {
-                    type: 'success',
-                    title: 'Optimal Planting Window',
-                    message: 'Next 3-5 days are ideal for planting based on soil moisture and weather forecast.',
-                    time: '2 hours ago'
-                  },
-                  {
-                    type: 'warning',
-                    title: 'Disease Risk Alert',
-                    message: 'Increased risk of leaf rust detected. Consider preventive fungicide application.',
-                    time: '5 hours ago'
-                  },
-                  {
-                    type: 'info',
-                    title: 'Irrigation Recommendation',
-                    message: 'Reduce irrigation by 15%. Current soil moisture levels are optimal for crop growth.',
-                    time: '1 day ago'
-                  }
-                ].map((insight, index) => (
-                  <div
-                    key={index}
-                    className="flex gap-4 p-4 rounded-xl bg-white/50 border border-emerald-100 hover:bg-white/70 transition-all shadow-sm"
-                  >
-                    <div
-                      className={`p-2 rounded-lg h-fit ${
-                        insight.type === 'success'
-                          ? 'bg-green-100'
-                          : insight.type === 'warning'
-                          ? 'bg-amber-100'
-                          : 'bg-blue-100'
-                      }`}
-                    >
-                      {insight.type === 'success' ? (
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                      ) : insight.type === 'warning' ? (
-                        <AlertCircle className="w-5 h-5 text-amber-600" />
-                      ) : (
-                        <Lightbulb className="w-5 h-5 text-blue-600" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-bold text-gray-800 mb-1">{insight.title}</h4>
-                      <p className="text-sm text-gray-600 mb-2 leading-relaxed">{insight.message}</p>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <Calendar className="w-3 h-3" />
-                        {insight.time}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-800">Recent Predictions</h3>
+                <Link to="/history" className="text-emerald-600 hover:text-emerald-700 text-sm font-bold">View All</Link>
               </div>
-            </div>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-6">
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">Recent Predictions</h3>
               <div className="space-y-4">
-                {[
-                  {
-                    farm: 'Green Valley Farm',
-                    crop: 'Wheat',
-                    prediction: '85 tons',
-                    confidence: '94%',
-                    status: 'Good'
-                  },
-                  {
-                    farm: 'Sunny Acres',
-                    crop: 'Corn',
-                    prediction: '142 tons',
-                    confidence: '91%',
-                    status: 'Excellent'
-                  },
-                  {
-                    farm: 'River Bend',
-                    crop: 'Soybean',
-                    prediction: '67 tons',
-                    confidence: '88%',
-                    status: 'Good'
-                  }
-                ].map((pred, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-4 rounded-xl bg-white/50 border border-emerald-100 hover:bg-white hover:shadow-md transition-all shadow-sm"
-                  >
+                {recentPredictions.length === 0 ? (
+                  <div className="text-center py-10 text-gray-500 italic">No predictions yet. Get started by running a scan!</div>
+                ) : recentPredictions.map((pred) => (
+                  <div key={pred.prediction_id} className="flex items-center justify-between p-4 rounded-xl bg-white/50 border border-emerald-100 hover:bg-white hover:shadow-md transition-all shadow-sm">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-sm">
-                        <Wheat className="w-5 h-5" />
+                        {pred.prediction_type === 'disease' ? <Bug /> : <Wheat />}
                       </div>
                       <div>
-                        <h4 className="font-bold text-gray-800">{pred.farm}</h4>
-                        <p className="text-sm text-gray-600">{pred.crop}</p>
+                        <h4 className="font-bold text-gray-800 capitalize">{pred.prediction_type} Prediction</h4>
+                        <p className="text-sm text-gray-600">{new Date(pred.created_at).toLocaleDateString()}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-gray-800">{pred.prediction}</div>
-                      <div className="text-xs text-emerald-600 font-medium">{pred.confidence} confidence</div>
+                      <div className="font-bold text-gray-800">
+                        {pred.prediction_type === 'disease' ? pred.result.disease_name : 
+                         pred.prediction_type === 'crop' ? pred.result.recommended_crops?.[0]?.crop_name :
+                         pred.prediction_type === 'soil' ? pred.result.soil_type :
+                         'Completed'}
+                      </div>
+                      <div className="text-xs text-emerald-600 font-bold uppercase">
+                        {pred.feedback_rating || 'Pending Feedback'}
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">Weekly Crop Health</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={healthData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                  <XAxis dataKey="day" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      border: '1px solid #d1fae5',
-                      borderRadius: '12px'
-                    }}
-                  />
-                  <Bar dataKey="health" fill="#10b981" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
             </div>
           </div>
 

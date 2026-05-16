@@ -160,13 +160,11 @@ export interface SoilPredictionRequest {
   };
 }
 
-
 export interface RecommendedCrop {
   crop_name: string;
   suitability_score: number;
   reason: string;
 }
-
 
 export interface CropRecommendationResponse {
   recommended_crops: RecommendedCrop[];
@@ -175,7 +173,6 @@ export interface CropRecommendationResponse {
   prediction_id: string;
   cached?: boolean;
 }
-
 
 export interface CropRecommendationRequest {
   soil_report_id?: string;
@@ -232,22 +229,52 @@ export interface YieldPredictionRequest {
 
 export interface YieldPredictionResponse {
   predicted_yield_kg_per_hectare: number;
-  total_yield_kg: number;
-export interface YieldPredictionResponse {
-  predicted_yield_kg_per_hectare: number;
   total_predicted_yield_kg: number;
   yield_range: {
     low: number;
     high: number;
     confidence_level: number;
   };
-  key_factors: Array<{
-    factor: string;
-    impact: string;
-  }>;
   key_factors: string[];
   prediction_id: string;
   cached?: boolean;
+}
+
+export interface PredictionHistoryResponse {
+  prediction_id: string;
+  user_id: string;
+  prediction_type: string;
+  input_data: any;
+  result: any;
+  created_at: string;
+  feedback_rating: string | null;
+}
+
+export interface FeedbackCreate {
+  prediction_id: string;
+  rating: "correct" | "partially_correct" | "incorrect";
+  comment?: string;
+  actual_outcome?: any;
+}
+
+export interface FeedbackResponse {
+  feedback_id: string;
+  prediction_id: string;
+  rating: string;
+  comment: string | null;
+  submitted_at: string;
+}
+
+export interface DashboardSummary {
+  total_farms: number;
+  total_area_hectares: number;
+  predictions_this_month: number;
+  recent_prediction: PredictionHistoryResponse | null;
+  total_feedback: number;
+  correct_count: number;
+  partially_correct_count: number;
+  incorrect_count: number;
+  weighted_accuracy_pct: number;
 }
 
 // ── Weather types ────────────────────────────────────────────────────────────
@@ -269,11 +296,6 @@ export interface WeatherResponse {
   summary: string;
   forecast: WeatherForecastItem[];
   agricultural_advisory?: string;
-export interface YieldPredictionRequest {
-  farm_id: string;
-  crop_name: string;
-  soil_report_id: string;
-  season: string;
 }
 
 // ── User types ───────────────────────────────────────────────────────────────
@@ -419,4 +441,33 @@ export const api = {
     if (params.days) query.append("days", params.days.toString());
     return request<WeatherResponse>(`/predict/weather?${query.toString()}`);
   },
+
+  // ── Feedback ───────────────────────────────────────────────────────────────
+
+  submitFeedback: (data: FeedbackCreate) =>
+    request<FeedbackResponse>("/feedback", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getMyFeedback: (skip = 0, limit = 10) =>
+    request<FeedbackResponse[]>(`/feedback/my?skip=${skip}&limit=${limit}`),
+
+  // ── Dashboard & History ────────────────────────────────────────────────────
+
+  getPredictionHistory: (params: {
+    prediction_type?: string;
+    farm_id?: string;
+    skip?: number;
+    limit?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params.prediction_type) query.append("prediction_type", params.prediction_type);
+    if (params.farm_id) query.append("farm_id", params.farm_id);
+    if (params.skip) query.append("skip", params.skip.toString());
+    if (params.limit) query.append("limit", params.limit.toString());
+    return request<PredictionHistoryResponse[]>(`/predictions/history?${query.toString()}`);
+  },
+
+  getDashboardSummary: () => request<DashboardSummary>("/dashboard/summary"),
 };

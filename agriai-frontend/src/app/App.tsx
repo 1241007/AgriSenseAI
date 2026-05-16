@@ -13,7 +13,8 @@ import FertilizerRecommendation from "./components/FertilizerRecommendation";
 import DiseaseDetection from "./components/DiseaseDetection";
 import YieldPrediction from "./components/YieldPrediction";
 import Weather from "./components/Weather";
-import HistoryAndFeedback from "./components/HistoryAndFeedback";
+import PredictionHistory from "./components/PredictionHistory";
+import Feedback from "./components/Feedback";
 import ProfileSettings from "./components/ProfileSettings";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -69,11 +70,11 @@ export default function App() {
           />
           <Route
             path="/history"
-            element={<AuthenticatedLayout><HistoryAndFeedback /></AuthenticatedLayout>}
+            element={<AuthenticatedLayout><PredictionHistory /></AuthenticatedLayout>}
           />
           <Route
             path="/feedback"
-            element={<AuthenticatedLayout><HistoryAndFeedback /></AuthenticatedLayout>}
+            element={<AuthenticatedLayout><Feedback /></AuthenticatedLayout>}
           />
           <Route
             path="/settings"

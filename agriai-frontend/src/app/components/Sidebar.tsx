@@ -29,7 +29,8 @@ export default function Sidebar({ isOpen, onClose, activeItem, colorScheme = 'em
     { icon: Lightbulb, label: 'Crop Recommendation', path: '/crop-recommendation' },
     { icon: TrendingUp, label: 'Yield Prediction', path: '/yield-prediction' },
     { icon: CloudRain, label: 'Weather', path: '/weather' },
-    { icon: History, label: 'History & Feedback', path: '/history' }
+    { icon: History, label: 'History', path: '/history' },
+    { icon: Lightbulb, label: 'Feedback', path: '/feedback' }
   ];
 
   const bottomMenuItems = [

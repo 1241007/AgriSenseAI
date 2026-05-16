@@ -1,18 +1,12 @@
-from fastapi import APIRouter, Depends, Query, File, UploadFile
+from fastapi import APIRouter, Depends, Query, File, UploadFile, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import Annotated, Optional
 from uuid import UUID
 
 from app.dependencies import get_current_user, get_db
-
-from app.schemas.prediction import SoilRequest, SoilResponse, FertilizerRequest, FertilizerResponse, DiseaseResponse, CropRequest, CropResponse, YieldRequest, YieldResponse
-from app.schemas.weather import WeatherResponse
-from app.services.prediction_service import predict_soil, predict_fertilizer, predict_disease, predict_crop, predict_yield
-from app.services.weather_service import get_weather_forecast
-
-from typing import Annotated
-
-from app.dependencies import get_current_user, get_db
+from app.db.models.user import User
+from app.db.models.farm import Farm
 from app.schemas.prediction import (
     SoilRequest, SoilResponse, 
     CropRequest, CropResponse, 
@@ -20,10 +14,11 @@ from app.schemas.prediction import (
     DiseaseResponse,
     YieldRequest, YieldResponse
 )
+from app.schemas.weather import WeatherResponse
 from app.services.prediction_service import (
     predict_soil, predict_crop, predict_fertilizer, predict_disease, predict_yield
 )
-from app.db.models.user import User
+from app.services.weather_service import get_weather_forecast
 from app.utils.image_utils import validate_image, validate_size
 
 router = APIRouter(prefix="/predict", tags=["Predictions"])
@@ -68,6 +63,7 @@ async def predict_disease_route(
     
     return await predict_disease(file, current_user.user_id, session)
 
+
 @router.get("/weather", response_model=WeatherResponse)
 async def predict_weather_route(
     current_user: Annotated[User, Depends(get_current_user)],
@@ -77,10 +73,6 @@ async def predict_weather_route(
     lon: Optional[float] = Query(None),
     days: int = Query(7, ge=1, le=14),
 ):
-    from sqlalchemy import select
-    from app.db.models.farm import Farm
-    from fastapi import HTTPException
-
     if farm_id:
         query = select(Farm).where(Farm.farm_id == farm_id, Farm.user_id == current_user.user_id)
         result = await session.execute(query)

@@ -1,14 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import {
-  Bell,
-  Search,
   User,
-  ChevronDown,
   Menu,
   ArrowLeft,
-  Calendar,
-  MapPin,
   Sparkles,
   BarChart3,
   Target,
@@ -17,7 +12,6 @@ import {
   Droplets,
   Leaf,
   Activity,
-  AlertTriangle,
   CheckCircle2,
   TrendingUp,
   Loader2
@@ -28,11 +22,6 @@ import {
   Area,
   BarChart,
   Bar,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -41,6 +30,7 @@ import {
   Legend
 } from 'recharts';
 import { api, FarmResponse, SoilReportResponse, YieldPredictionResponse } from '../api/client';
+import { toast } from 'sonner';
 
 const seasonalTrends = [
   { month: 'Jan', wheat: 3200, rice: 0, corn: 0 },
@@ -68,81 +58,16 @@ export default function YieldPrediction() {
   const [soilReports, setSoilReports] = useState<SoilReportResponse[]>([]);
   const [selectedReportId, setSelectedReportId] = useState<string>('');
   const [selectedCrop, setSelectedCrop] = useState('Wheat');
-  const [selectedSeason, setSelectedSeason] = useState('Rabi 2026');
+  const [selectedSeason, setSelectedSeason] = useState('Rabi');
   
   const [isPredicting, setIsPredicting] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [predicting, setPredicting] = useState(false);
-  
-  const [farms, setFarms] = useState<FarmResponse[]>([]);
-  const [reports, setReports] = useState<SoilReportResponse[]>([]);
-  
-  const [selectedFarmId, setSelectedFarmId] = useState('');
-  const [selectedCrop, setSelectedCrop] = useState('Wheat');
-  const [selectedReportId, setSelectedReportId] = useState('');
-  const [selectedSeason, setSelectedSeason] = useState('Kharif');
-  
+  const [loading, setLoading] = useState(true);
   const [prediction, setPrediction] = useState<YieldPredictionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchFarms = async () => {
-      try {
-        const data = await api.getFarms();
-        setFarms(data);
-        if (data.length > 0) setSelectedFarmId(data[0].farm_id);
-      } catch (err) {
-        console.error("Failed to fetch farms", err);
-      }
-    };
     fetchFarms();
   }, []);
-
-  useEffect(() => {
-    if (selectedFarmId) {
-      const fetchReports = async () => {
-        try {
-          const data = await api.getSoilReports(selectedFarmId);
-          setSoilReports(data);
-          if (data.length > 0) setSelectedReportId(data[0].report_id);
-          else setSelectedReportId('');
-        } catch (err) {
-          console.error("Failed to fetch reports", err);
-        }
-      };
-      fetchReports();
-    }
-  }, [selectedFarmId]);
-
-  const handlePredict = async () => {
-    if (!selectedFarmId || !selectedReportId) {
-      setError("Please select a farm and a soil report");
-      return;
-    }
-
-    setIsPredicting(true);
-    setError(null);
-    try {
-      const result = await api.predictYield({
-        farm_id: selectedFarmId,
-        soil_report_id: selectedReportId,
-        crop_name: selectedCrop,
-        season: selectedSeason
-      });
-      setPrediction(result);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to predict yield");
-    } finally {
-      setIsPredicting(false);
-    }
-  };
-      fetchReports(selectedFarmId);
-    } else {
-      setReports([]);
-      setSelectedReportId('');
-    }
-  }, [selectedFarmId]);
 
   const fetchFarms = async () => {
     try {
@@ -151,17 +76,27 @@ export default function YieldPrediction() {
       setFarms(data);
       if (data.length > 0) setSelectedFarmId(data[0].farm_id);
     } catch (err) {
-      setError('Failed to fetch farms');
+      toast.error('Failed to fetch farms');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (selectedFarmId) {
+      fetchReports(selectedFarmId);
+    } else {
+      setSoilReports([]);
+      setSelectedReportId('');
+    }
+  }, [selectedFarmId]);
+
   const fetchReports = async (farmId: string) => {
     try {
       const data = await api.getSoilReports(farmId);
-      setReports(data);
+      setSoilReports(data);
       if (data.length > 0) setSelectedReportId(data[0].report_id);
+      else setSelectedReportId('');
     } catch (err) {
       console.error('Failed to fetch reports', err);
     }
@@ -169,12 +104,12 @@ export default function YieldPrediction() {
 
   const handlePredict = async () => {
     if (!selectedFarmId || !selectedReportId || !selectedCrop || !selectedSeason) {
-      setError('Please select all fields');
+      toast.error('Please select all fields');
       return;
     }
 
     try {
-      setPredicting(true);
+      setIsPredicting(true);
       setError(null);
       const res = await api.predictYield({
         farm_id: selectedFarmId,
@@ -183,14 +118,24 @@ export default function YieldPrediction() {
         season: selectedSeason
       });
       setPrediction(res);
+      toast.success('Yield prediction generated!');
     } catch (err: any) {
       setError(err.message || 'Prediction failed');
+      toast.error('Prediction failed');
     } finally {
-      setPredicting(false);
+      setIsPredicting(false);
     }
   };
 
   const currentFarm = farms.find(f => f.farm_id === selectedFarmId);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-emerald-50">
+        <Loader2 className="w-12 h-12 text-emerald-600 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
@@ -201,60 +146,23 @@ export default function YieldPrediction() {
         colorScheme="emerald"
       />
 
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       <div className="lg:ml-64">
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100">
-          <div className="px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden p-2 hover:bg-emerald-50 rounded-lg transition-colors"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
-                <h1 className="text-2xl font-bold text-gray-800 hidden sm:block">Yield Forecasting</h1>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-lg bg-white/60 rounded-lg border border-emerald-100">
-                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <div className="text-sm font-medium text-gray-800">John Farmer</div>
-                    <div className="text-xs text-gray-600">Premium Plan</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100 p-4">
+          <div className="flex items-center justify-between">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2"><Menu /></button>
+            <h1 className="text-xl font-bold text-gray-800">Yield Forecasting</h1>
+            <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white"><User /></div>
           </div>
         </header>
 
         <main className="p-4 sm:p-6 lg:p-8 space-y-6">
           <div>
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 mb-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Dashboard
+            <Link to="/dashboard" className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 mb-2">
+              <ArrowLeft className="w-4 h-4" /> Back to Dashboard
             </Link>
-            <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-              <TrendingUp className="w-8 h-8 text-emerald-600" />
-              AI Yield Prediction
-            </h1>
+            <h1 className="text-3xl font-bold text-gray-800">AI Yield Prediction</h1>
           </div>
 
-          <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-          {/* Selectors */}
           <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
@@ -264,33 +172,10 @@ export default function YieldPrediction() {
                   onChange={(e) => setSelectedFarmId(e.target.value)}
                   className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
+                  <option value="">Select a Farm</option>
                   {farms.map(f => (
                     <option key={f.farm_id} value={f.farm_id}>{f.name}</option>
                   ))}
-                  {farms.length === 0 && <option value="">No farms found</option>}
-                  <option value="">Select a Farm</option>
-                  {farms.map(farm => (
-                    <option key={farm.farm_id} value={farm.farm_id}>{farm.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select Soil Report</label>
-                <select
-                  value={selectedReportId}
-                  onChange={(e) => setSelectedReportId(e.target.value)}
-                  disabled={!selectedFarmId || reports.length === 0}
-                  className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
-                >
-                  {reports.length === 0 ? (
-                    <option value="">No reports found</option>
-                  ) : (
-                    reports.map(report => (
-                      <option key={report.report_id} value={report.report_id}>
-                        {new Date(report.reported_at).toLocaleDateString()} - Report
-                      </option>
-                    ))
-                  )}
                 </select>
               </div>
               <div>
@@ -298,17 +183,18 @@ export default function YieldPrediction() {
                 <select
                   value={selectedReportId}
                   onChange={(e) => setSelectedReportId(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  disabled={!selectedFarmId || soilReports.length === 0}
+                  className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
                 >
-                  {soilReports.map(r => (
-                    <option key={r.report_id} value={r.report_id}>{new Date(r.created_at).toLocaleDateString()}</option>
-                  ))}
-                  {soilReports.length === 0 && <option value="">No reports found</option>}
-                  <option value="Wheat">Wheat</option>
-                  <option value="Rice">Rice</option>
-                  <option value="Corn">Corn</option>
-                  <option value="Soybean">Soybean</option>
-                  <option value="Cotton">Cotton</option>
+                  {soilReports.length === 0 ? (
+                    <option value="">No reports found</option>
+                  ) : (
+                    soilReports.map(r => (
+                      <option key={r.report_id} value={r.report_id}>
+                        {new Date(r.reported_at).toLocaleDateString()} - Report
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
               <div>
@@ -318,87 +204,44 @@ export default function YieldPrediction() {
                   onChange={(e) => setSelectedCrop(e.target.value)}
                   className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option>Wheat</option>
-                  <option>Rice</option>
-                  <option>Corn</option>
-                  <option>Soybean</option>
-                  <option>Sugarcane</option>
+                  <option value="Wheat">Wheat</option>
+                  <option value="Rice">Rice</option>
+                  <option value="Corn">Corn</option>
+                  <option value="Soybean">Soybean</option>
+                  <option value="Cotton">Cotton</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Season</label>
+                <select
+                  value={selectedSeason}
+                  onChange={(e) => setSelectedSeason(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/70 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
                   <option value="Kharif">Kharif</option>
                   <option value="Rabi">Rabi</option>
                   <option value="Zaid">Zaid</option>
                 </select>
               </div>
-              <button
-                onClick={handlePredict}
-                disabled={isPredicting || !selectedReportId}
-                className="px-8 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isPredicting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                Predict Yield
-              </button>
             </div>
-            {error && <p className="text-red-500 mt-4 text-sm">{error}</p>}
-          </div>
-
-          {prediction ? (
-            <>
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="backdrop-blur-lg bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl p-6 text-white">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Target className="w-5 h-5" />
-                    <span className="text-emerald-100">Predicted Yield</span>
-                  </div>
-                  <div className="text-5xl font-bold mb-2">{prediction.total_yield_kg.toLocaleString()}</div>
-                  <div className="text-emerald-100 mb-4">kg (Total Production)</div>
-                  <div className="flex items-center gap-2 px-3 py-2 bg-white/20 backdrop-blur-lg rounded-lg">
-                    <TrendIcon className="w-4 h-4 text-green-200" />
-                    <span className="text-sm">Based on {prediction.predicted_yield_kg_per_hectare} kg/ha</span>
-                  </div>
-                </div>
-
-                <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
-                  <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp className="w-5 h-5 text-blue-600" />
-                    <span className="text-gray-600">Yield Range</span>
-                  </div>
-                  <div className="text-2xl font-bold text-gray-800 mb-2">
-                    {prediction.yield_range.low.toLocaleString()} - {prediction.yield_range.high.toLocaleString()}
-                  </div>
-                  <div className="text-gray-600 mb-4">kg/ha</div>
-                  <div className="text-sm text-gray-500">Confidence Level: {prediction.yield_range.confidence_level * 100}%</div>
-                </div>
-
-                <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Activity className="w-5 h-5 text-purple-600" />
-                    <span className="text-gray-600">Key Factors</span>
-                  </div>
-                  <div className="space-y-2">
-                    {prediction.key_factors.map((f, i) => (
-                      <div key={i} className="flex justify-between items-center text-sm">
-                        <span className="text-gray-600">{f.factor}</span>
-                        <span className={`font-medium ${f.impact === 'Optimal' || f.impact === 'High' || f.impact === 'Favorable' ? 'text-emerald-600' : 'text-orange-600'}`}>
-                          {f.impact}
             
             <div className="mt-6 flex justify-center">
               <button
                 onClick={handlePredict}
-                disabled={predicting || !selectedReportId}
+                disabled={isPredicting || !selectedReportId}
                 className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
               >
-                {predicting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                Generate Prediction
+                {isPredicting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                Generate Forecast
               </button>
             </div>
             
-            {error && <p className="text-red-500 text-center mt-4">{error}</p>}
+            {error && <p className="text-red-500 text-center mt-4 text-sm">{error}</p>}
           </div>
 
           {prediction && (
             <>
-              {/* Prediction Cards */}
               <div className="grid md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {/* Main Prediction */}
                 <div className="backdrop-blur-lg bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl p-6 text-white shadow-xl">
                   <div className="flex items-center gap-2 mb-4">
                     <Target className="w-5 h-5" />
@@ -408,13 +251,11 @@ export default function YieldPrediction() {
                     {Math.round(prediction.total_predicted_yield_kg).toLocaleString()}
                   </div>
                   <div className="text-emerald-100 mb-4">kg (Predicted Total)</div>
-                  <div className="flex items-center gap-2 px-3 py-2 bg-white/20 backdrop-blur-lg rounded-lg">
-                    <TrendIcon className="w-4 h-4 text-green-200" />
-                    <span className="text-sm">Based on {currentFarm?.area_hectares || 1} hectares</span>
+                  <div className="text-sm bg-white/20 p-2 rounded-lg">
+                    Based on {currentFarm?.area_hectares || 1} hectares
                   </div>
                 </div>
 
-                {/* Yield Per Acre */}
                 <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
                   <div className="flex items-center gap-2 mb-4">
                     <BarChart3 className="w-5 h-5 text-blue-600" />
@@ -424,10 +265,11 @@ export default function YieldPrediction() {
                     {Math.round(prediction.predicted_yield_kg_per_hectare).toLocaleString()}
                   </div>
                   <div className="text-gray-600 mb-4">kg/hectare</div>
-                  <div className="text-sm text-gray-500">Expected range: {Math.round(prediction.yield_range.low)} - {Math.round(prediction.yield_range.high)}</div>
+                  <div className="text-sm text-gray-500">
+                    Range: {Math.round(prediction.yield_range.low)} - {Math.round(prediction.yield_range.high)}
+                  </div>
                 </div>
 
-                {/* Confidence Score */}
                 <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
                   <div className="flex items-center gap-2 mb-4">
                     <Sparkles className="w-5 h-5 text-purple-600" />
@@ -439,184 +281,15 @@ export default function YieldPrediction() {
                   <div className="text-gray-600 mb-4">High Precision</div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className="bg-gradient-to-r from-emerald-600 to-teal-600 h-2 rounded-full transition-all duration-1000" 
+                      className="bg-emerald-600 h-2 rounded-full" 
                       style={{ width: `${prediction.yield_range.confidence_level * 100}%` }}
                     ></div>
                   </div>
                 </div>
               </div>
 
-              {/* Yield Range Analytics */}
-              <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Yield Range Analytics</h3>
-                <div className="grid md:grid-cols-3 gap-6 mb-6">
-                  <div className="text-center p-4 bg-green-50 rounded-xl">
-                    <div className="text-sm text-gray-600 mb-1">High Estimate (90th)</div>
-                    <div className="text-3xl font-bold text-green-700">{Math.round(prediction.yield_range.high).toLocaleString()}</div>
-                    <div className="text-xs text-gray-500 mt-1">kg/ha</div>
-                  </div>
-                  <div className="text-center p-4 bg-blue-50 rounded-xl">
-                    <div className="text-sm text-gray-600 mb-1">Point Estimate</div>
-                    <div className="text-3xl font-bold text-blue-700">{Math.round(prediction.predicted_yield_kg_per_hectare).toLocaleString()}</div>
-                    <div className="text-xs text-gray-500 mt-1">kg/ha</div>
-                  </div>
-                  <div className="text-center p-4 bg-orange-50 rounded-xl">
-                    <div className="text-sm text-gray-600 mb-1">Low Estimate (10th)</div>
-                    <div className="text-3xl font-bold text-orange-700">{Math.round(prediction.yield_range.low).toLocaleString()}</div>
-                    <div className="text-xs text-gray-500 mt-1">kg/ha</div>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                  <div className="flex gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-blue-900 mb-1">Prediction Insight</h4>
-                      <p className="text-sm text-blue-700">
-                        Based on your farm's soil data and current seasonal forecast, we predict a stable yield. 
-                        The 80% confidence interval suggests that even in worst-case scenarios, your production remains viable.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Charts (Static for now as they require time-series data) */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Seasonal Trends */}
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">Seasonal Yield Trends</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={seasonalTrends}>
-                  <defs>
-                    <linearGradient id="wheatGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="riceGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="month" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      border: '1px solid #d1fae5',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Legend />
-                  <Area type="monotone" dataKey="wheat" stroke="#f59e0b" fill="url(#wheatGradient)" />
-                  <Area type="monotone" dataKey="rice" stroke="#10b981" fill="url(#riceGradient)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Prediction vs Actual */}
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">Prediction Accuracy</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={yieldComparison}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="year" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      border: '1px solid #d1fae5',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Legend />
-                  <Bar dataKey="predicted" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-                  <Bar dataKey="actual" fill="#10b981" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Influencing Factors & Insights */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Radar Chart */}
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">Influencing Factors</h3>
-              <ResponsiveContainer width="100%" height={350}>
-                <RadarChart data={influencingFactors}>
-                  <PolarGrid stroke="#d1d5db" />
-                  <PolarAngleAxis dataKey="factor" tick={{ fill: '#6b7280', fontSize: 12 }} />
-                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#6b7280' }} />
-                  <Radar name="Score" dataKey="value" stroke="#10b981" fill="#10b981" fillOpacity={0.5} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      border: '1px solid #d1fae5',
-                      borderRadius: '8px'
-                    }}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Production Insights */}
-            <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">Production Insights</h3>
-              <div className="space-y-4">
-                {[
-                  {
-                    icon: Sun,
-                    title: 'Weather Conditions',
-                    status: 'Favorable',
-                    description: 'Optimal rainfall and temperature patterns expected',
-                    color: 'green'
-                  },
-                  {
-                    icon: Droplets,
-                    title: 'Water Availability',
-                    status: 'Good',
-                    description: 'Irrigation systems at 85% capacity',
-                    color: 'blue'
-                  },
-                  {
-                    icon: Leaf,
-                    title: 'Soil Nutrients',
-                    status: 'Excellent',
-                    description: 'NPK levels within optimal range',
-                    color: 'emerald'
-                  },
-                  {
-                    icon: Activity,
-                    title: 'Crop Health',
-                    status: 'Very Good',
-                    description: 'No disease detected, growth on track',
-                    color: 'teal'
-                  }
-                ].map((insight, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start gap-4 p-4 bg-white/50 rounded-xl border border-emerald-100"
-                  >
-                    <div className={`p-3 rounded-lg bg-emerald-50`}>
-                      <insight.icon className={`w-5 h-5 text-emerald-600`} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-medium text-gray-800">{insight.title}</h4>
-                        <span className={`text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full`}>
-                          {insight.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
               <div className="grid lg:grid-cols-2 gap-6">
-                <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
+                <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
                   <h3 className="text-xl font-bold text-gray-800 mb-6">Seasonal Trends</h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={seasonalTrends}>
@@ -628,7 +301,7 @@ export default function YieldPrediction() {
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100">
+                <div className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 shadow-sm">
                   <h3 className="text-xl font-bold text-gray-800 mb-6">Historical Comparison</h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={yieldComparison}>
@@ -637,26 +310,26 @@ export default function YieldPrediction() {
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="predicted" fill="#3b82f6" />
-                      <Bar dataKey="actual" fill="#10b981" />
+                      <Bar dataKey="predicted" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="actual" fill="#10b981" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
             </>
-          ) : (
+          )}
+
+          {!prediction && !loading && (
             <div className="backdrop-blur-lg bg-white/60 rounded-3xl p-12 border border-emerald-100 text-center">
-              <div className="inline-flex p-6 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 mb-6">
-                <TrendIcon className="w-16 h-16 text-emerald-600" />
+              <div className="inline-flex p-6 rounded-full bg-emerald-100 mb-6 text-emerald-600">
+                <TrendIcon className="w-16 h-16" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-3">Get Your Yield Forecast</h3>
+              <h3 className="text-2xl font-bold text-gray-800 mb-3">Yield Forecast Ready</h3>
               <p className="text-gray-600 max-w-md mx-auto">
-                Select a farm and a recent soil report to generate an AI-powered yield prediction based on current conditions and weather forecasts.
+                Generate an AI-powered yield prediction based on your farm's unique profile and soil composition.
               </p>
             </div>
           )}
-            </div>
-          </div>
         </main>
       </div>
     </div>

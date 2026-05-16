@@ -130,3 +130,6 @@ alembic_local.ini
 *.p12
 *.pfx
 secrets/
+
+# Scratch scripts
+flush_redis.py
