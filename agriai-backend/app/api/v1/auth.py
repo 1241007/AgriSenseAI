@@ -12,6 +12,7 @@ from app.schemas.auth import (
     RegisterRequest,
     TokenResponse,
     UpdateProfileRequest,
+    ChangePasswordRequest,
     UserResponse,
 )
 from app.services.auth_service import (
@@ -153,3 +154,15 @@ async def update_me(
     await db.commit()
     await db.refresh(current_user)
     return current_user
+
+
+@router.post("/me/change-password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(body.current_password, current_user.password_hash):
+        raise ApiError("INVALID_PASSWORD", "Current password is incorrect.", 400)
+    current_user.password_hash = hash_password(body.new_password)
+    await db.commit()

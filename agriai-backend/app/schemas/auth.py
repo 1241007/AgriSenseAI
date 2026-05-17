@@ -44,6 +44,21 @@ class UpdateProfileRequest(BaseModel):
     phone: str | None = None
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_complexity(cls, v: str) -> str:
+        if not PASSWORD_REGEX.match(v):
+            raise ValueError(
+                "Password must be at least 8 characters and include uppercase, "
+                "lowercase, digit, and special character."
+            )
+        return v
+
+
 class UserResponse(BaseModel):
     user_id: uuid.UUID
     email: str
