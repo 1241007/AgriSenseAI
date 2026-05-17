@@ -1,0 +1,36 @@
+version: "3.9"
+
+# Production compose — pulls pre-built images from DockerHub
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+#
+# Required env vars (set in your shell or a .env file at this level):
+#   DOCKERHUB_USERNAME   your DockerHub username
+#   IMAGE_TAG            image tag to deploy (e.g. latest or a git SHA)
+#   DATABASE_URL         full asyncpg connection string
+#   REDIS_URL            redis connection string
+#   SECRET_KEY           JWT secret — use a strong random value
+#   ALLOWED_ORIGINS      JSON array of allowed CORS origins
+#   OPENAI_API_KEY       (if using OpenAI models)
+
+services:
+  api:
+    image: ${DOCKERHUB_USERNAME}/agriai-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+
+  frontend:
+    image: ${DOCKERHUB_USERNAME}/agriai-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
