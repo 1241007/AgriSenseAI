@@ -10,7 +10,8 @@ const PATH_TO_LABEL: Record<string, string> = {
   "/farms": "Farms",
   "/soil-analysis": "Soil Analysis",
   "/disease-detection": "Disease Detection",
-  "/fertilizer": "Crop Recommendation",
+  "/crop-recommendation": "Crop Recommendation",
+  "/fertilizer": "Fertilizer Recommendation",
   "/yield-prediction": "Yield Prediction",
   "/weather": "Weather",
   "/history": "History & Feedback",
@@ -23,7 +24,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const activeItem = PATH_TO_LABEL[location.pathname] ?? "";
+  const activeLabel = PATH_TO_LABEL[location.pathname] ?? "";
 
   const handleLogout = async () => {
     await logout();
@@ -35,7 +36,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        activeItem={activeItem}
+        activePath={location.pathname}
       />
 
       {/* Overlay for mobile */}
@@ -56,7 +57,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           >
             <Menu className="w-5 h-5 text-gray-600" />
           </button>
-          <span className="font-semibold text-gray-700">{activeItem}</span>
+          <span className="font-semibold text-gray-700">{activeLabel}</span>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-600 hidden sm:block">
               {user?.full_name ?? user?.email}

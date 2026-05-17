@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import {
-  Bell,
   Search,
-  User,
-  Menu,
   ArrowLeft,
   Filter,
   Download,
@@ -16,12 +13,10 @@ import {
   Loader2,
   ExternalLink
 } from 'lucide-react';
-import Sidebar from './Sidebar';
 import { api, PredictionHistoryResponse } from '../api/client';
 import { toast } from 'sonner';
 
 export default function PredictionHistory() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [predictions, setPredictions] = useState<PredictionHistoryResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('');
@@ -81,37 +76,21 @@ export default function PredictionHistory() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeItem="History"
-        colorScheme="emerald"
-      />
-
-      <div className="lg:ml-64">
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100">
-          <div className="px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4 flex-1">
-                <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2"><Menu /></button>
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search history..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-              <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white"><User /></div>
-            </div>
+    <div className="space-y-6">
+      <div className="backdrop-blur-lg bg-white/80 border border-emerald-100 rounded-2xl px-4 sm:px-6 py-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search history..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
           </div>
-        </header>
-
-        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+        </div>
+      </div>
           <div className="flex items-center justify-between">
             <div>
               <Link to="/dashboard" className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 mb-2">
@@ -196,8 +175,6 @@ export default function PredictionHistory() {
               </div>
             </div>
           )}
-        </main>
-      </div>
     </div>
   );
 }

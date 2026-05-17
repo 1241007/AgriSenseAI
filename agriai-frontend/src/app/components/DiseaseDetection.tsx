@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  User,
-  Menu,
   Upload,
   Camera,
   Scan,
@@ -17,7 +15,6 @@ import {
   Bug,
   X
 } from 'lucide-react';
-import Sidebar from './Sidebar';
 import { api } from '../api/client';
 import { toast } from 'sonner';
 
@@ -32,7 +29,6 @@ interface ScanResult {
 }
 
 export default function DiseaseDetection() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -177,24 +173,10 @@ export default function DiseaseDetection() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeItem="Disease Detection"
-        colorScheme="emerald"
-      />
-
-      <div className="lg:ml-64">
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100 p-4">
-          <div className="flex items-center justify-between">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2"><Menu /></button>
-            <h1 className="text-xl font-bold text-gray-800">Disease Detection</h1>
-            <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white"><User /></div>
-          </div>
-        </header>
-
-        <main className="p-4 sm:p-6 lg:p-8">
+    <div className="space-y-6">
+      <div className="backdrop-blur-lg bg-white/80 border border-emerald-100 rounded-2xl px-4 sm:px-6 py-4">
+        <h1 className="text-xl font-bold text-gray-800">Disease Detection</h1>
+      </div>
           <div className="grid lg:grid-cols-2 gap-8">
             <div className="space-y-6">
               {!selectedImage ? (
@@ -356,9 +338,7 @@ export default function DiseaseDetection() {
               )}
             </div>
           </div>
-        </main>
-      </div>
-
+      
       {isCameraOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
           <div className="relative w-full max-w-2xl bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">

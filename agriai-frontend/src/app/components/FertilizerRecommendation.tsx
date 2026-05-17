@@ -2,23 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { api, SoilReportResponse, FarmResponse } from '../api/client';
 import {
-  Sprout,
-  LayoutDashboard,
-  Wheat,
-  TestTube,
-  Bug,
-  Lightbulb,
-  TrendingUp,
-  CloudRain,
-  History,
-  MessageSquare,
-  Settings,
-  Bell,
-  Search,
-  User,
-  ChevronDown,
-  Menu,
-  X,
   Zap,
   Calendar,
   Package,
@@ -79,8 +62,6 @@ const crops = [
 ];
 
 export default function FertilizerRecommendation() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('Crop Recommendation');
   const [generating, setGenerating] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [prediction, setPrediction] = useState<any>(null);
@@ -112,19 +93,6 @@ export default function FertilizerRecommendation() {
     growthStage: 'vegetative'
   });
 
-  const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { icon: Wheat, label: 'Farms', path: '/farms' },
-    { icon: TestTube, label: 'Soil Analysis', path: '/soil-analysis' },
-    { icon: Bug, label: 'Disease Detection', path: '/disease-detection' },
-    { icon: Lightbulb, label: 'Crop Recommendation', path: '/fertilizer' },
-    { icon: TrendingUp, label: 'Yield Prediction' },
-    { icon: CloudRain, label: 'Weather' },
-    { icon: History, label: 'History' },
-    { icon: MessageSquare, label: 'Feedback' },
-    { icon: Settings, label: 'Settings' }
-  ];
-
   const handleGenerateRecommendation = async () => {
     try {
       setError(null);
@@ -145,111 +113,7 @@ export default function FertilizerRecommendation() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 h-full w-64 backdrop-blur-lg bg-white/80 border-r border-emerald-100 transform transition-transform duration-300 z-50 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}
-      >
-        <div className="p-6 border-b border-emerald-100">
-          <Link to="/" className="flex items-center gap-2">
-            <Sprout className="w-8 h-8 text-emerald-600" />
-            <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              AgriAI
-            </span>
-          </Link>
-        </div>
-
-        <nav className="p-4 space-y-2">
-          {menuItems.map((item, index) => (
-            item.path ? (
-              <Link
-                key={index}
-                to={item.path}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                  activeTab === item.label
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg'
-                    : 'text-gray-700 hover:bg-emerald-50'
-                }`}
-              >
-                <item.icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </Link>
-            ) : (
-              <button
-                key={index}
-                onClick={() => {
-                  setActiveTab(item.label);
-                  setSidebarOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                  activeTab === item.label
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg'
-                    : 'text-gray-700 hover:bg-emerald-50'
-                }`}
-              >
-                <item.icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </button>
-            )
-          ))}
-        </nav>
-      </aside>
-
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Main Content */}
-      <div className="lg:ml-64">
-        {/* Topbar */}
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100">
-          <div className="px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="lg:hidden p-2 hover:bg-emerald-50 rounded-lg transition-colors"
-                >
-                  {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                </button>
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search recommendations..."
-                    className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <button className="relative p-2 hover:bg-emerald-50 rounded-lg transition-colors">
-                  <Bell className="w-6 h-6 text-gray-700" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </button>
-                <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-lg bg-white/60 rounded-lg border border-emerald-100">
-                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <div className="text-sm font-medium text-gray-800">John Farmer</div>
-                    <div className="text-xs text-gray-600">Premium Plan</div>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gray-600 hidden sm:block" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Page Content */}
-        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="space-y-6">
           {/* Header Section */}
           <div className="backdrop-blur-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-6 sm:p-8 text-white">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -667,8 +531,6 @@ export default function FertilizerRecommendation() {
               </div>
             </div>
           )}
-        </main>
-      </div>
     </div>
   );
 }

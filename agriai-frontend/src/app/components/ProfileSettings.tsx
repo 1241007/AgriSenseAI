@@ -3,12 +3,10 @@ import { Link } from 'react-router';
 import {
   User, Bell, Globe, Shield, Settings, Camera, Mail, Phone, MapPin,
   Moon, Sun, Lock, Smartphone, Monitor, AlertTriangle, LogOut, Trash2,
-  Check, Menu, Search, ChevronDown, ChevronRight
+  Check, ChevronDown, ChevronRight
 } from 'lucide-react';
-import Sidebar from './Sidebar';
 
 export default function ProfileSettings() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState({
@@ -30,57 +28,27 @@ export default function ProfileSettings() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeItem="Settings"
-        colorScheme="emerald"
-      />
-
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Main Content */}
-      <div className="lg:ml-64">
-        {/* Topbar */}
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100">
-          <div className="px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden p-2 hover:bg-emerald-50 rounded-lg transition-colors"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-800">Settings</h1>
-                  <p className="text-sm text-gray-600 hidden sm:block">Manage your account and preferences</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-lg bg-white/60 rounded-lg border border-emerald-100">
-                <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
-                  <User className="w-5 h-5" />
-                </div>
-                <div className="hidden sm:block">
-                  <div className="text-sm font-medium text-gray-800">John Farmer</div>
-                  <div className="text-xs text-gray-600">Premium Plan</div>
-                </div>
-                <ChevronDown className="w-4 h-4 text-gray-600 hidden sm:block" />
-              </div>
-            </div>
+    <div className="space-y-6">
+      <div className="backdrop-blur-lg bg-white/80 border border-emerald-100 rounded-2xl px-4 sm:px-6 py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">Settings</h1>
+            <p className="text-sm text-gray-600 hidden sm:block">Manage your account and preferences</p>
           </div>
-        </header>
+          <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-lg bg-white/60 rounded-lg border border-emerald-100">
+            <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
+              <User className="w-5 h-5" />
+            </div>
+            <div className="hidden sm:block">
+              <div className="text-sm font-medium text-gray-800">John Farmer</div>
+              <div className="text-xs text-gray-600">Premium Plan</div>
+            </div>
+            <ChevronDown className="w-4 h-4 text-gray-600 hidden sm:block" />
+          </div>
+        </div>
+      </div>
 
-        {/* Settings Content */}
-        <div className="p-4 sm:p-6 lg:p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
           {/* Tab Navigation */}
           <div className="mb-6 overflow-x-auto">
             <div className="flex gap-2 min-w-max pb-2">
@@ -551,8 +519,7 @@ export default function ProfileSettings() {
             </div>
           )}
             </div>
-          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
 }

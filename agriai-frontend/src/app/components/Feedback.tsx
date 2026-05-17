@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import {
-  Bell,
-  User,
-  ChevronDown,
-  Menu,
   ArrowLeft,
   CheckCircle,
   AlertCircle,
@@ -14,12 +10,10 @@ import {
   Star,
   Loader2
 } from 'lucide-react';
-import Sidebar from './Sidebar';
 import { api, PredictionHistoryResponse } from '../api/client';
 import { toast } from 'sonner';
 
 export default function Feedback() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [predictions, setPredictions] = useState<PredictionHistoryResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
@@ -60,24 +54,10 @@ export default function Feedback() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeItem="Feedback"
-        colorScheme="emerald"
-      />
-
-      <div className="lg:ml-64">
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100 p-4">
-          <div className="flex items-center justify-between">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2"><Menu /></button>
-            <h1 className="text-xl font-bold text-gray-800">Submit Feedback</h1>
-            <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white"><User /></div>
-          </div>
-        </header>
-
-        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="space-y-6">
+      <div className="backdrop-blur-lg bg-white/80 border border-emerald-100 rounded-2xl px-4 sm:px-6 py-4">
+        <h1 className="text-xl font-bold text-gray-800">Submit Feedback</h1>
+      </div>
           <div>
             <Link to="/dashboard" className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 mb-2">
               <ArrowLeft className="w-4 h-4" /> Back to Dashboard
@@ -171,8 +151,6 @@ export default function Feedback() {
               ))}
             </div>
           )}
-        </main>
-      </div>
     </div>
   );
 }

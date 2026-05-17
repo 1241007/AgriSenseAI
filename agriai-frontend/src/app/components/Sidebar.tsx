@@ -16,11 +16,11 @@ import {
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  activeItem?: string;
+  activePath?: string;
   colorScheme?: 'emerald' | 'cyan';
 }
 
-export default function Sidebar({ isOpen, onClose, activeItem, colorScheme = 'emerald' }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, activePath, colorScheme = 'emerald' }: SidebarProps) {
   const mainMenuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Wheat, label: 'Farms', path: '/farms' },
@@ -77,7 +77,7 @@ export default function Sidebar({ isOpen, onClose, activeItem, colorScheme = 'em
             to={item.path}
             onClick={onClose}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-              activeItem === item.label
+              activePath === item.path
                 ? `bg-gradient-to-r ${getGradient()} text-white shadow-lg`
                 : `text-gray-700 ${getHoverColor()}`
             }`}
@@ -96,7 +96,7 @@ export default function Sidebar({ isOpen, onClose, activeItem, colorScheme = 'em
             to={item.path}
             onClick={onClose}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-              activeItem === item.label
+              activePath === item.path
                 ? `bg-gradient-to-r ${getGradient()} text-white shadow-lg`
                 : `text-gray-700 ${getHoverColor()}`
             }`}
