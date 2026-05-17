@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import {
-  Bell,
-  Search,
-  User,
   ChevronDown,
-  Menu,
   ArrowLeft,
   MapPin,
   Droplets,
@@ -26,7 +22,6 @@ import {
   Wheat,
   Loader2
 } from 'lucide-react';
-import Sidebar from './Sidebar';
 import {
   AreaChart,
   Area,
@@ -41,7 +36,6 @@ import {
 import { api, FarmResponse, WeatherResponse } from '../api/client';
 
 export default function Weather() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [farms, setFarms] = useState<FarmResponse[]>([]);
   const [selectedFarmId, setSelectedFarmId] = useState<string>('');
   const [weatherData, setWeatherData] = useState<WeatherResponse | null>(null);
@@ -99,7 +93,7 @@ export default function Weather() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-cyan-50">
+      <div className="flex items-center justify-center py-20">
         <Loader2 className="w-12 h-12 text-cyan-600 animate-spin" />
       </div>
     );
@@ -108,63 +102,24 @@ export default function Weather() {
   const selectedFarm = farms.find(f => f.farm_id === selectedFarmId);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeItem="Weather"
-        colorScheme="cyan"
-      />
-
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      <div className="lg:ml-64">
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-cyan-100">
-          <div className="px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden p-2 hover:bg-cyan-50 rounded-lg transition-colors"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
-                <div className="relative flex-1 max-w-md">
-                  <select
-                    value={selectedFarmId}
-                    onChange={(e) => setSelectedFarmId(e.target.value)}
-                    className="w-full pl-4 pr-10 py-2 bg-white/70 border border-cyan-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 appearance-none"
-                  >
-                    {farms.length === 0 && <option value="">No farms found</option>}
-                    {farms.map(farm => (
-                      <option key={farm.farm_id} value={farm.farm_id}>{farm.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-lg bg-white/60 rounded-lg border border-cyan-100">
-                  <div className="w-8 h-8 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-full flex items-center justify-center text-white">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <div className="text-sm font-medium text-gray-800">John Farmer</div>
-                    <div className="text-xs text-gray-600">Premium Plan</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div className="space-y-6">
+      <div className="backdrop-blur-lg bg-white/80 border border-cyan-100 rounded-2xl px-4 sm:px-6 py-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <select
+              value={selectedFarmId}
+              onChange={(e) => setSelectedFarmId(e.target.value)}
+              className="w-full pl-4 pr-10 py-2 bg-white/70 border border-cyan-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 appearance-none"
+            >
+              {farms.length === 0 && <option value="">No farms found</option>}
+              {farms.map(farm => (
+                <option key={farm.farm_id} value={farm.farm_id}>{farm.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
           </div>
-        </header>
-
-        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+        </div>
+      </div>
           <div className="flex items-center justify-between">
             <div>
               <Link
@@ -378,8 +333,6 @@ export default function Weather() {
               </Link>
             </div>
           )}
-        </main>
-      </div>
     </div>
   );
 }

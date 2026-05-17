@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import {
-  User,
-  Menu,
   ArrowLeft,
   Sparkles,
   BarChart3,
@@ -16,7 +14,6 @@ import {
   TrendingUp,
   Loader2
 } from 'lucide-react';
-import Sidebar from './Sidebar';
 import {
   AreaChart,
   Area,
@@ -52,7 +49,6 @@ const yieldComparison = [
 ];
 
 export default function YieldPrediction() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [farms, setFarms] = useState<FarmResponse[]>([]);
   const [selectedFarmId, setSelectedFarmId] = useState<string>('');
   const [soilReports, setSoilReports] = useState<SoilReportResponse[]>([]);
@@ -131,31 +127,17 @@ export default function YieldPrediction() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-emerald-50">
+      <div className="flex items-center justify-center py-20">
         <Loader2 className="w-12 h-12 text-emerald-600 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeItem="Yield Prediction"
-        colorScheme="emerald"
-      />
-
-      <div className="lg:ml-64">
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100 p-4">
-          <div className="flex items-center justify-between">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2"><Menu /></button>
-            <h1 className="text-xl font-bold text-gray-800">Yield Forecasting</h1>
-            <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white"><User /></div>
-          </div>
-        </header>
-
-        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="space-y-6">
+      <div className="backdrop-blur-lg bg-white/80 border border-emerald-100 rounded-2xl px-4 sm:px-6 py-4">
+        <h1 className="text-xl font-bold text-gray-800">Yield Forecasting</h1>
+      </div>
           <div>
             <Link to="/dashboard" className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 mb-2">
               <ArrowLeft className="w-4 h-4" /> Back to Dashboard
@@ -330,8 +312,6 @@ export default function YieldPrediction() {
               </p>
             </div>
           )}
-        </main>
-      </div>
     </div>
   );
 }

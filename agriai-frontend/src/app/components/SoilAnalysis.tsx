@@ -2,11 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { api, SoilPredictionResponse, FarmResponse } from '../api/client';
 import {
-  Bell,
   Search,
-  User,
-  ChevronDown,
-  Menu,
   Zap,
   Activity,
   AlertCircle,
@@ -24,7 +20,7 @@ import {
   TestTube,
   Lightbulb
 } from 'lucide-react';
-import Sidebar from './Sidebar';
+import { SkeletonCard, SkeletonStatCard } from './ui/skeleton-card';
 import {
   RadialBarChart,
   RadialBar,
@@ -66,9 +62,8 @@ const soilComparisonData = [
 ];
 
 export default function SoilAnalysis() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('Soil Analysis');
   const [analyzing, setAnalyzing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [soilData, setSoilData] = useState({
     nitrogen: 90,
@@ -92,6 +87,8 @@ export default function SoilAnalysis() {
         if (data.length > 0) setSelectedFarmId(data[0].farm_id);
       } catch (err) {
         console.error("Failed to fetch farms", err);
+      } finally {
+        setLoading(false);
       }
     };
     fetchFarms();
@@ -199,68 +196,37 @@ export default function SoilAnalysis() {
     return { status: 'Deficient', color: 'red', icon: TrendingDown };
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeItem="Soil Analysis"
-        colorScheme="emerald"
-      />
-
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Main Content */}
-      <div className="lg:ml-64">
-        {/* Topbar */}
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100">
-          <div className="px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden p-2 hover:bg-emerald-50 rounded-lg transition-colors"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search analysis..."
-                    className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <button className="relative p-2 hover:bg-emerald-50 rounded-lg transition-colors">
-                  <Bell className="w-6 h-6 text-gray-700" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </button>
-                <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-lg bg-white/60 rounded-lg border border-emerald-100">
-                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <div className="text-sm font-medium text-gray-800">John Farmer</div>
-                    <div className="text-xs text-gray-600">Premium Plan</div>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gray-600 hidden sm:block" />
-                </div>
-              </div>
-            </div>
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <SkeletonCard />
+        <div className="grid lg:grid-cols-3 gap-6">
+          <SkeletonCard />
+          <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <SkeletonStatCard key={index} />
+            ))}
           </div>
-        </header>
+        </div>
+        <SkeletonCard />
+      </div>
+    );
+  }
 
-        {/* Page Content */}
-        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+  return (
+    <div className="space-y-6">
+      <div className="backdrop-blur-lg bg-white/80 border border-emerald-100 rounded-2xl px-4 sm:px-6 py-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search analysis..."
+              className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+        </div>
+      </div>
           {/* Header Section */}
           <div className="backdrop-blur-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-6 sm:p-8 text-white">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -731,8 +697,6 @@ export default function SoilAnalysis() {
               )}
             </div>
           </div>
-        </main>
-      </div>
     </div>
   );
 }

@@ -1,11 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import {
-  Bell,
   Search,
-  User,
-  ChevronDown,
-  Menu,
   ArrowLeft,
   Sparkles,
   TrendingUp as TrendingUpIcon,
@@ -22,7 +18,6 @@ import {
   TestTube,
   Lightbulb
 } from 'lucide-react';
-import Sidebar from './Sidebar';
 import { api, FarmResponse, SoilReportResponse, CropRecommendationResponse } from '../api/client';
 import { useEffect } from 'react';
 
@@ -98,7 +93,6 @@ const recommendedCrops = [
 ];
 
 export default function CropRecommendation() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [farms, setFarms] = useState<FarmResponse[]>([]);
   const [reports, setReports] = useState<SoilReportResponse[]>([]);
   const [loading, setLoading] = useState(false);
@@ -162,67 +156,19 @@ export default function CropRecommendation() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeItem="Crop Recommendation"
-        colorScheme="emerald"
-      />
-
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Main Content */}
-      <div className="lg:ml-64">
-        {/* Topbar */}
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100">
-          <div className="px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden p-2 hover:bg-emerald-50 rounded-lg transition-colors"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search farms, crops, insights..."
-                    className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <button className="relative p-2 hover:bg-emerald-50 rounded-lg transition-colors">
-                  <Bell className="w-6 h-6 text-gray-700" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </button>
-                <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-lg bg-white/60 rounded-lg border border-emerald-100">
-                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <div className="text-sm font-medium text-gray-800">John Farmer</div>
-                    <div className="text-xs text-gray-600">Premium Plan</div>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gray-600 hidden sm:block" />
-                </div>
-              </div>
-            </div>
+    <div className="space-y-6">
+      <div className="backdrop-blur-lg bg-white/80 border border-emerald-100 rounded-2xl px-4 sm:px-6 py-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search farms, crops, insights..."
+              className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
           </div>
-        </header>
-
-        {/* Page Content */}
-        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+        </div>
+      </div>
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -475,8 +421,6 @@ export default function CropRecommendation() {
               </div>
             </>
           )}
-        </main>
-      </div>
     </div>
   );
 }

@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Bell, Search, User, ChevronDown, Plus, MapPin, Calendar,
-  Droplets, ThermometerSun, Activity, ArrowUp, Menu, MoreVertical,
+  Search, Plus, MapPin, Calendar,
+  Droplets, ThermometerSun, Activity, ArrowUp, MoreVertical,
   CheckCircle, Sprout, Wheat, TestTube, Trash2, X, Loader2
 } from 'lucide-react';
-import Sidebar from './Sidebar';
+import { SkeletonCard, SkeletonStatCard } from './ui/skeleton-card';
 import {
   AreaChart, Area, BarChart, Bar, RadarChart, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, Radar, XAxis, YAxis,
@@ -242,7 +242,6 @@ function DeleteConfirm({
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function FarmManagement() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [farms, setFarms] = useState<FarmResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -317,42 +316,19 @@ export default function FarmManagement() {
   const totalArea = farms.reduce((s, f) => s + f.area_hectares, 0).toFixed(1);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} activeItem="Farms" colorScheme="emerald" />
-      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-
-      <div className="lg:ml-64">
-        {/* Topbar */}
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100">
-          <div className="px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 hover:bg-emerald-50 rounded-lg transition-colors">
-                  <Menu className="w-6 h-6" />
-                </button>
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input type="text" placeholder="Search farms..."
-                    className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <button className="relative p-2 hover:bg-emerald-50 rounded-lg transition-colors">
-                  <Bell className="w-6 h-6 text-gray-700" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-                </button>
-                <div className="flex items-center gap-3 px-4 py-2 backdrop-blur-lg bg-white/60 rounded-lg border border-emerald-100">
-                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gray-600 hidden sm:block" />
-                </div>
-              </div>
-            </div>
+    <div className="space-y-6">
+      <div className="backdrop-blur-lg bg-white/80 border border-emerald-100 rounded-2xl px-4 sm:px-6 py-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search farms..."
+              className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
           </div>
-        </header>
-
-        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+        </div>
+      </div>
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -367,33 +343,41 @@ export default function FarmManagement() {
 
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { title: 'Total Farms', value: String(farms.length), icon: Wheat, gradient: 'from-emerald-500 to-green-500' },
-              { title: 'Total Area', value: totalArea, unit: 'ha', icon: MapPin, gradient: 'from-teal-500 to-cyan-500' },
-              { title: 'Active Crops', value: String(farms.filter(f => f.current_crop).length), icon: Sprout, gradient: 'from-violet-500 to-purple-500' },
-              { title: 'Soil Reports', value: String(soilReports.length), icon: TestTube, gradient: 'from-blue-500 to-indigo-500' },
-            ].map((card, i) => (
-              <div key={i} className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 hover:shadow-xl transition-all">
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${card.gradient}`}>
-                    <card.icon className="w-6 h-6 text-white" />
+            {loading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <SkeletonStatCard key={index} />
+              ))
+            ) : (
+              [
+                { title: 'Total Farms', value: String(farms.length), icon: Wheat, gradient: 'from-emerald-500 to-green-500' },
+                { title: 'Total Area', value: totalArea, unit: 'ha', icon: MapPin, gradient: 'from-teal-500 to-cyan-500' },
+                { title: 'Active Crops', value: String(farms.filter(f => f.current_crop).length), icon: Sprout, gradient: 'from-violet-500 to-purple-500' },
+                { title: 'Soil Reports', value: String(soilReports.length), icon: TestTube, gradient: 'from-blue-500 to-indigo-500' },
+              ].map((card, i) => (
+                <div key={i} className="backdrop-blur-lg bg-white/60 rounded-2xl p-6 border border-emerald-100 hover:shadow-xl transition-all">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`p-3 rounded-xl bg-gradient-to-br ${card.gradient}`}>
+                      <card.icon className="w-6 h-6 text-white" />
+                    </div>
                   </div>
+                  <p className="text-sm text-gray-600">{card.title}</p>
+                  <h3 className="text-3xl font-bold text-gray-800">
+                    {card.value}
+                    {card.unit && <span className="text-lg text-gray-500 ml-1">{card.unit}</span>}
+                  </h3>
                 </div>
-                <p className="text-sm text-gray-600">{card.title}</p>
-                <h3 className="text-3xl font-bold text-gray-800">
-                  {card.value}
-                  {card.unit && <span className="text-lg text-gray-500 ml-1">{card.unit}</span>}
-                </h3>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* Farm List */}
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Your Farms</h2>
             {loading && (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <SkeletonCard key={index} />
+                ))}
               </div>
             )}
             {error && <p className="text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
@@ -403,11 +387,12 @@ export default function FarmManagement() {
                 <p>No farms yet. Add your first farm to get started.</p>
               </div>
             )}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {farms.map(farm => (
-                <div key={farm.farm_id}
-                  className={`backdrop-blur-lg bg-white/60 rounded-2xl p-6 border transition-all cursor-pointer ${selectedFarmId === farm.farm_id ? 'border-emerald-400 shadow-xl' : 'border-emerald-100 hover:shadow-xl'}`}
-                  onClick={() => handleSelectFarm(farm.farm_id)}>
+            {!loading && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {farms.map(farm => (
+                  <div key={farm.farm_id}
+                    className={`backdrop-blur-lg bg-white/60 rounded-2xl p-6 border transition-all cursor-pointer ${selectedFarmId === farm.farm_id ? 'border-emerald-400 shadow-xl' : 'border-emerald-100 hover:shadow-xl'}`}
+                    onClick={() => handleSelectFarm(farm.farm_id)}>
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-4">
                       <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white">
@@ -458,9 +443,10 @@ export default function FarmManagement() {
                       <span className="text-xs text-gray-700">active</span>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Farm Detail */}
@@ -569,9 +555,6 @@ export default function FarmManagement() {
               </div>
             </div>
           )}
-        </main>
-      </div>
-
       {showAddFarm && <AddFarmModal onClose={() => setShowAddFarm(false)} onCreated={handleFarmCreated} />}
       {deleteTarget && (
         <DeleteConfirm

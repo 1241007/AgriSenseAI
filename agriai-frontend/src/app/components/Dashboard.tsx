@@ -12,7 +12,6 @@ import {
   Zap,
   CheckCircle,
   AlertCircle,
-  Menu,
   Sprout,
   CloudRain,
   Wheat,
@@ -20,12 +19,11 @@ import {
   Lightbulb,
   TrendingUp,
   Bug,
-  Loader2,
   Activity,
   Target
 } from 'lucide-react';
 import { Link } from 'react-router';
-import Sidebar from './Sidebar';
+import { SkeletonCard, SkeletonStatCard } from './ui/skeleton-card';
 import {
   AreaChart,
   Area,
@@ -61,7 +59,6 @@ const cropData = [
 ];
 
 export default function Dashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [farms, setFarms] = useState<FarmResponse[]>([]);
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -114,53 +111,52 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-emerald-50">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-emerald-600 animate-spin" />
-          <p className="text-emerald-800 font-medium animate-pulse">Growing your dashboard...</p>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <SkeletonStatCard key={index} />
+          ))}
+        </div>
+        <div className="grid lg:grid-cols-3 gap-6">
+          <SkeletonCard />
+          <div className="lg:col-span-2 grid gap-6">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        </div>
+        <div className="grid lg:grid-cols-2 gap-6">
+          <SkeletonCard />
+          <SkeletonCard />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeItem="Dashboard"
-        colorScheme="emerald"
-      />
-
-      <div className="lg:ml-64">
-        <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/80 border-b border-emerald-100">
-          <div className="px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4 flex-1">
-                <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2"><Menu className="w-6 h-6" /></button>
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search farms, crops, insights..."
-                    className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-3 px-4 py-2 bg-white/60 rounded-lg border border-emerald-100">
-                <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
-                  <User className="w-5 h-5" />
-                </div>
-                <div className="hidden sm:block">
-                  <div className="text-sm font-bold text-gray-800">{user?.full_name || 'Farmer'}</div>
-                  <div className="text-xs text-emerald-600 font-medium">Verified User</div>
-                </div>
-              </div>
+    <div className="space-y-6">
+      <div className="backdrop-blur-lg bg-white/80 border border-emerald-100 rounded-2xl px-4 sm:px-6 py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 flex-1">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search farms, crops, insights..."
+                className="w-full pl-10 pr-4 py-2 bg-white/70 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
             </div>
           </div>
-        </header>
-
-        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+          <div className="flex items-center gap-3 px-4 py-2 bg-white/60 rounded-lg border border-emerald-100">
+            <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white">
+              <User className="w-5 h-5" />
+            </div>
+            <div className="hidden sm:block">
+              <div className="text-sm font-bold text-gray-800">{user?.full_name || 'Farmer'}</div>
+              <div className="text-xs text-emerald-600 font-medium">Verified User</div>
+            </div>
+          </div>
+        </div>
+      </div>
           <div className="backdrop-blur-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-10">
               <Sprout className="w-32 h-32 rotate-12" />
@@ -232,9 +228,7 @@ export default function Dashboard() {
               </div>
 
               {weatherLoading ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 py-10">
-                  <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-                </div>
+                <SkeletonCard className="border-0 bg-transparent p-0" />
               ) : weather ? (
                 <div className="space-y-6 flex-1">
                   <div className="text-center">
@@ -334,8 +328,6 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-        </main>
-      </div>
     </div>
   );
 }
